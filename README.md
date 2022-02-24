@@ -1,4 +1,4 @@
-# Dragonfly performance testing
+# Performance testing
 
 This repository includes performance test tools of dragonfly.
 
