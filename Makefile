@@ -6,5 +6,11 @@ markdownlint:
 	@./hack/markdownlint.sh
 .PHONY: markdownlint
 
+clean:
+	@go clean
+	@rm -rf bin .go .cache
+.PHONY: clean
+
 help: 
 	@echo "make markdownlint                   run markdown lint"
+	@echo "make clean                          clean"
