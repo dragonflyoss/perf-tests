@@ -17,24 +17,27 @@
 package main
 
 import (
+	"fmt"
 	"os"
+	"path/filepath"
 
 	"d7y.io/dragonfly/v2/pkg/basic"
 	"d7y.io/dragonfly/v2/pkg/rpc/base"
 	"d7y.io/dragonfly/v2/pkg/rpc/dfdaemon"
 	"github.com/bojand/ghz/printer"
 	"github.com/bojand/ghz/runner"
+	"github.com/google/uuid"
 )
 
 func main() {
 	report, err := runner.Run(
 		"dfdaemon.Daemon.Download",
-		"localhost:65001",
+		"127.0.0.1:65000",
 		runner.WithProtoset("./bundle.pb"),
 		runner.WithData(GetData()),
 		runner.WithInsecure(true),
-		runner.WithConcurrency(uint(10000)),
-		runner.WithTotalRequests(uint(10000)),
+		runner.WithConcurrency(uint(10)),
+		runner.WithTotalRequests(uint(10)),
 	)
 	if err != nil {
 		panic(err)
@@ -50,10 +53,13 @@ func main() {
 
 func GetData() []*dfdaemon.DownRequest {
 	var req []*dfdaemon.DownRequest
-	for i := 0; i < 10000; i++ {
+	for i := 0; i < 10; i++ {
+		output := filepath.Join(os.TempDir(), uuid.New().String())
+		fmt.Println(output)
 		req = append(req, &dfdaemon.DownRequest{
-			Url:               "http://file.dragonfly.svc.staging-cloud.alipay.net/1m",
-			Output:            os.TempDir(),
+			Uuid:              uuid.New().String(),
+			Url:               fmt.Sprintf("%s?number=%d", "http://foo/1k", i),
+			Output:            output,
 			DisableBackSource: true,
 			UrlMeta:           &base.UrlMeta{},
 			Uid:               int64(basic.UserID),
