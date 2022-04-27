@@ -17,94 +17,56 @@
 package main
 
 import (
-	"sync"
+	"os"
+	"strconv"
 
-	"d7y.io/dragonfly/v2/pkg/idgen"
-	"d7y.io/dragonfly/v2/pkg/rpc/base"
-	"d7y.io/dragonfly/v2/pkg/rpc/base/common"
-	"d7y.io/dragonfly/v2/pkg/rpc/scheduler"
-	"github.com/bojand/ghz/runner"
-	"github.com/google/uuid"
+	"github.com/dragonflyoss/perf-tests/benchmarks/scheduler/scenarios"
 )
 
-var TaskID = idgen.TaskID("https://foo", &base.UrlMeta{})
+var (
+	host             = "localhost:8002"
+	protoset         = "../bundle.pb"
+	concurrency uint = 100
+	insecure         = true
+)
 
-const Concurrency = 10
+func init() {
+	if h := os.Getenv("DRAGONFLY_TEST_SCHEDULER_HOST"); h != "" {
+		host = h
+	}
+
+	if p := os.Getenv("DRAGONFLY_TEST_SCHEDULER_PROTOSET"); p != "" {
+		protoset = p
+	}
+
+	if c := os.Getenv("DRAGONFLY_TEST_SCHEDULER_CONCURRENCY"); c != "" {
+		c, err := strconv.Atoi(c)
+		if err != nil {
+			panic(err)
+		}
+
+		concurrency = uint(c)
+	}
+
+	if i := os.Getenv("DRAGONFLY_TEST_SCHEDULER_INSECURE"); i != "" {
+		i, err := strconv.ParseBool(i)
+		if err != nil {
+			panic(err)
+		}
+
+		insecure = i
+	}
+}
 
 func main() {
-	var peerIDs []string
-	for i := 0; i < Concurrency; i++ {
-		peerIDs = append(peerIDs, idgen.PeerID("127.0.0.1"))
+	scenarios := scenarios.New(host, protoset, concurrency, insecure)
+	for _, scenario := range scenarios {
+		if err := scenario.Run(); err != nil {
+			panic(err)
+		}
 	}
 
-	if err := register(peerIDs); err != nil {
-		panic(err)
+	for _, scenario := range scenarios {
+		scenario.Print()
 	}
-
-	if errs := reportPiece(peerIDs); len(errs) > 0 {
-		panic(errs)
-	}
-}
-
-func register(peerIDs []string) error {
-	var req []*scheduler.PeerTaskRequest
-	for _, peerID := range peerIDs {
-		req = append(req, &scheduler.PeerTaskRequest{
-			Url:     "https://foo",
-			UrlMeta: &base.UrlMeta{},
-			PeerId:  peerID,
-			PeerHost: &scheduler.PeerHost{
-				Uuid:     uuid.NewString(),
-				Ip:       "127.0.0.1",
-				RpcPort:  8080,
-				DownPort: 8081,
-				HostName: "localhost",
-			},
-		})
-	}
-
-	_, err := runner.Run(
-		"scheduler.Scheduler.RegisterPeerTask",
-		"127.0.0.1:8002",
-		runner.WithProtoset("../bundle.pb"),
-		runner.WithData(req),
-		runner.WithInsecure(true),
-		runner.WithConcurrency(uint(len(peerIDs))),
-		runner.WithTotalRequests(uint(len(peerIDs))),
-	)
-
-	return err
-}
-
-func reportPiece(peerIDs []string) []error {
-	var wg sync.WaitGroup
-	var errs []error
-	for _, peerID := range peerIDs {
-		wg.Add(1)
-		go func(peerID string) {
-			_, err := runner.Run(
-				"scheduler.Scheduler.ReportPieceResult",
-				"127.0.0.1:8002",
-				runner.WithProtoset("../bundle.pb"),
-				runner.WithData(&scheduler.PieceResult{
-					TaskId: idgen.TaskID("https://foo", &base.UrlMeta{}),
-					SrcPid: peerID,
-					DstPid: idgen.PeerID("127.0.0.1"),
-					PieceInfo: &base.PieceInfo{
-						PieceNum: common.BeginOfPiece,
-					},
-					Success: true,
-				}),
-				runner.WithInsecure(true),
-				runner.WithConcurrency(uint(1)),
-				runner.WithTotalRequests(uint(1)),
-			)
-			wg.Done()
-			if err != nil {
-				errs = append(errs, err)
-			}
-		}(peerID)
-	}
-	wg.Wait()
-	return errs
 }

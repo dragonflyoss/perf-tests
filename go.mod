@@ -6,6 +6,8 @@ require (
 	d7y.io/dragonfly/v2 v2.0.3-alpha.0
 	github.com/bojand/ghz v0.108.0
 	github.com/google/uuid v1.2.0
+	github.com/jhump/protoreflect v1.9.0
+	github.com/olekukonko/tablewriter v0.0.4
 )
 
 require (
@@ -26,8 +28,8 @@ require (
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/huandu/xstrings v1.3.1 // indirect
 	github.com/imdario/mergo v0.3.11 // indirect
-	github.com/jhump/protoreflect v1.9.0 // indirect
 	github.com/jinzhu/configor v1.1.1 // indirect
+	github.com/mattn/go-runewidth v0.0.13 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.2-0.20181231171920-c182affec369 // indirect
 	github.com/mitchellh/copystructure v1.0.0 // indirect
 	github.com/mitchellh/reflectwalk v1.0.0 // indirect
@@ -35,6 +37,7 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/prometheus/client_model v0.2.0 // indirect
 	github.com/prometheus/common v0.28.0 // indirect
+	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/shopspring/decimal v1.2.0 // indirect
 	github.com/spf13/cast v1.3.1 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
