@@ -28,6 +28,7 @@ import (
 	"github.com/olekukonko/tablewriter"
 )
 
+// register provides scenario function
 type register struct {
 	host                string
 	protoset            string
@@ -41,6 +42,7 @@ type register struct {
 	report              *runner.Report
 }
 
+// New register instance
 func newRegister(host, protoset string, concurrency uint, insecure bool) Scenario {
 	var peerIDs []string
 	for i := 0; i < int(concurrency); i++ {
@@ -60,10 +62,12 @@ func newRegister(host, protoset string, concurrency uint, insecure bool) Scenari
 	}
 }
 
+// Name returs name of register
 func (r *register) Name() string {
 	return "Register"
 }
 
+// Run executes the register performance test
 func (r *register) Run() error {
 	report, err := runner.Run(
 		RegisterMethod,
@@ -82,6 +86,7 @@ func (r *register) Run() error {
 	return nil
 }
 
+// Print output register performance test results to os.Stdout
 func (r *register) Print() {
 	report := r.report
 	table := tablewriter.NewWriter(os.Stdout)
@@ -122,10 +127,12 @@ func (r *register) Print() {
 	table.SetAlignment(tablewriter.ALIGN_LEFT)
 	table.SetAutoMergeCells(true)
 	table.SetRowLine(true)
+	table.SetCaption(true, "")
 	table.AppendBulk(data)
 	table.Render()
 }
 
+// data mocks register requests
 func (r *register) data() interface{} {
 	var data []*scheduler.PeerTaskRequest
 	for _, peerID := range r.peerIDs {

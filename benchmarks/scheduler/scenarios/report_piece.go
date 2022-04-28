@@ -32,6 +32,7 @@ import (
 	"github.com/olekukonko/tablewriter"
 )
 
+// reportPiece provides scenario function
 type reportPiece struct {
 	host                  string
 	protoset              string
@@ -47,6 +48,7 @@ type reportPiece struct {
 	recvCodeDistributions map[string]int
 }
 
+// New reportPiece instance
 func newReportPiece(host, protoset string, concurrency uint, insecure bool) Scenario {
 	var peerIDs []string
 	for i := 0; i < int(concurrency); i++ {
@@ -67,10 +69,12 @@ func newReportPiece(host, protoset string, concurrency uint, insecure bool) Scen
 	}
 }
 
+// Name returs name of reportPiece
 func (r *reportPiece) Name() string {
 	return "ReportPiece"
 }
 
+// Run executes the reportPiece performance test
 func (r *reportPiece) Run() error {
 	if _, err := runner.Run(
 		RegisterMethod,
@@ -104,7 +108,13 @@ func (r *reportPiece) Run() error {
 						return err
 					}
 
-					r.recvCodeDistributions[fmt.Sprintf("%v", msg.GetFieldByName("code"))]++
+					rawCode, err := msg.TryGetFieldByName("code")
+					if err != nil {
+						return err
+					}
+
+					code := fmt.Sprintf("%v", rawCode)
+					r.recvCodeDistributions[code]++
 					return nil
 				}),
 			)
@@ -121,6 +131,7 @@ func (r *reportPiece) Run() error {
 	return nil
 }
 
+// Print output reportPiece performance test results to os.Stdout
 func (r *reportPiece) Print() {
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetHeader([]string{"Scenario", "Name", "Description", "Value"})
@@ -223,10 +234,12 @@ func (r *reportPiece) Print() {
 	table.SetAlignment(tablewriter.ALIGN_LEFT)
 	table.SetAutoMergeCells(true)
 	table.SetRowLine(true)
+	table.SetCaption(true, "")
 	table.AppendBulk(data)
 	table.Render()
 }
 
+// registerData mocks register requests
 func (r *reportPiece) registerData() interface{} {
 	var data []*scheduler.PeerTaskRequest
 	for _, peerID := range r.peerIDs {
@@ -247,8 +260,10 @@ func (r *reportPiece) registerData() interface{} {
 	return data
 }
 
+// reportPieceData mocks report piece requests
 func (r *reportPiece) reportPieceData(peerID string) interface{} {
 	taskID := idgen.TaskID(r.url, r.urlMeta)
+	timestamp := uint64(time.Now().Nanosecond())
 	return &scheduler.PieceResult{
 		TaskId: taskID,
 		SrcPid: peerID,
@@ -256,6 +271,8 @@ func (r *reportPiece) reportPieceData(peerID string) interface{} {
 		PieceInfo: &base.PieceInfo{
 			PieceNum: common.BeginOfPiece,
 		},
-		Success: true,
+		Success:   true,
+		BeginTime: timestamp,
+		EndTime:   timestamp,
 	}
 }

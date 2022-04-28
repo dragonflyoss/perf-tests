@@ -24,10 +24,17 @@ import (
 )
 
 var (
-	host             = "localhost:8002"
-	protoset         = "../bundle.pb"
+	// GRPC server host
+	host = "localhost:8002"
+
+	// GRPC protoset path
+	protoset = "../bundle.pb"
+
+	// Enable grpc insecure mode
+	insecure = true
+
+	// Number of concurrent requests
 	concurrency uint = 100
-	insecure         = true
 )
 
 func init() {
@@ -39,15 +46,6 @@ func init() {
 		protoset = p
 	}
 
-	if c := os.Getenv("DRAGONFLY_TEST_SCHEDULER_CONCURRENCY"); c != "" {
-		c, err := strconv.Atoi(c)
-		if err != nil {
-			panic(err)
-		}
-
-		concurrency = uint(c)
-	}
-
 	if i := os.Getenv("DRAGONFLY_TEST_SCHEDULER_INSECURE"); i != "" {
 		i, err := strconv.ParseBool(i)
 		if err != nil {
@@ -55,6 +53,15 @@ func init() {
 		}
 
 		insecure = i
+	}
+
+	if c := os.Getenv("DRAGONFLY_TEST_SCHEDULER_CONCURRENCY"); c != "" {
+		c, err := strconv.Atoi(c)
+		if err != nil {
+			panic(err)
+		}
+
+		concurrency = uint(c)
 	}
 }
 

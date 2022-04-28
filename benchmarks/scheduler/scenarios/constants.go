@@ -17,10 +17,21 @@
 package scenarios
 
 const (
-	RegisterMethod     = "scheduler.Scheduler.RegisterPeerTask"
-	ReportPieceMethod  = "scheduler.Scheduler.ReportPieceResult"
-	ReportPeerMethod   = "scheduler.Scheduler.ReportPeerResult"
-	StatTaskMethod     = "scheduler.Scheduler.StatTask"
+	// RegisterMethod is grpc method of RegisterPeerTask
+	RegisterMethod = "scheduler.Scheduler.RegisterPeerTask"
+
+	// ReportPieceMethod is grpc method of ReportPieceResult
+	ReportPieceMethod = "scheduler.Scheduler.ReportPieceResult"
+
+	// ReportPeerMethod is grpc method of ReportPeerResult
+	ReportPeerMethod = "scheduler.Scheduler.ReportPeerResult"
+
+	// StatTaskMethod is grpc method of StatTask
+	StatTaskMethod = "scheduler.Scheduler.StatTask"
+
+	// AnnounceTaskMethod is grpc method of AnnounceTask
 	AnnounceTaskMethod = "scheduler.Scheduler.AnnounceTask"
-	LeaveTaskMethod    = "scheduler.Scheduler.LeaveTask"
+
+	// LeaveTaskMethod is grpc method of LeaveTask
+	LeaveTaskMethod = "scheduler.Scheduler.LeaveTask"
 )
