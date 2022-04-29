@@ -4,9 +4,7 @@ run:
 
 linters-settings:
   gocyclo:
-    min-complexity: 40
-  gci:
-    local-prefixes: d7y.io/dragonfly/v2
+    min-complexity: 42
 
 linters:
   disable-all: true
