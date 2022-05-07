@@ -6,6 +6,13 @@ linters-settings:
   gocyclo:
     min-complexity: 42
 
+issues:
+  new: true
+  exclude-rules:
+    - linters:
+        - staticcheck
+      text: "SA1019:"
+
 linters:
   disable-all: true
   enable:
