@@ -4,7 +4,7 @@ Provide scheduler performance test solution and related metics.
 
 ## Deployment
 
-Scheduler can be set to disable cdn mode,
+Scheduler can be set to disable seed peer mode,
 so that only the manager and scheduler can be deployed for performance testing.
 
 Deploying Dragonfly can refer to [install-dragonfly](https://d7y.io/docs/setup/install/source).
