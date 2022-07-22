@@ -137,11 +137,12 @@ func (r *register) data() interface{} {
 	var data []*scheduler.PeerTaskRequest
 	for _, peerID := range r.peerIDs {
 		data = append(data, &scheduler.PeerTaskRequest{
+			TaskId:  idgen.TaskID(r.url, r.urlMeta),
 			Url:     r.url,
 			UrlMeta: r.urlMeta,
 			PeerId:  peerID,
 			PeerHost: &scheduler.PeerHost{
-				Uuid:     uuid.NewString(),
+				Id:       uuid.NewString(),
 				Ip:       "127.0.0.1",
 				RpcPort:  8080,
 				DownPort: 8081,
