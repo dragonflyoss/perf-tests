@@ -139,10 +139,10 @@ func (a *announceTask) data() interface{} {
 	for _, peerID := range a.peerIDs {
 		data = append(data, &scheduler.AnnounceTaskRequest{
 			TaskId:  taskID,
-			Cid:     a.url,
+			Url:     a.url,
 			UrlMeta: a.urlMeta,
 			PeerHost: &scheduler.PeerHost{
-				Uuid:     uuid.NewString(),
+				Id:       uuid.NewString(),
 				Ip:       "127.0.0.1",
 				RpcPort:  8080,
 				DownPort: 8081,
