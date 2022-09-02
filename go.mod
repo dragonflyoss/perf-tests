@@ -1,6 +1,6 @@
 module github.com/dragonflyoss/perf-tests
 
-go 1.17
+go 1.18
 
 require (
 	d7y.io/dragonfly/v2 v2.0.4
