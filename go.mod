@@ -6,7 +6,7 @@ require (
 	d7y.io/dragonfly/v2 v2.0.4
 	github.com/bojand/ghz v0.110.0
 	github.com/google/uuid v1.3.0
-	github.com/jhump/protoreflect v1.12.0
+	github.com/jhump/protoreflect v1.13.0
 	github.com/olekukonko/tablewriter v0.0.5
 )
 
