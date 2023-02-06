@@ -1,7 +1,8 @@
 ---
 name: Bug Report
 about: Report a bug for perf-tests
-labels: kind/bug
+labels: bug
+
 ---
 
 ### Bug report:
