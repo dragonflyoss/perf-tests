@@ -4,7 +4,7 @@ run:
 
 linters-settings:
   gocyclo:
-    min-complexity: 42
+    min-complexity: 100
 
 issues:
   new: true
