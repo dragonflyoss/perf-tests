@@ -18,6 +18,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
+      - name: Golangci lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: v1.54
+          args: --verbose
+          working-directory: benchmark
+
       - name: Markdown lint
         uses: docker://avtodev/markdown-lint:v1
         with:
