@@ -26,7 +26,7 @@ import (
 )
 
 // Initialize default dfbench config.
-var cfg = config.NewConfig()
+var cfg = config.New()
 
 // rootCmd represents the benchmark command.
 var rootCmd = &cobra.Command{
@@ -44,6 +44,12 @@ var rootCmd = &cobra.Command{
 			logrus.SetLevel(level)
 		}
 		logrus.Debug("dfbench log initialized")
+
+		// Set the kubeconfig if it is provided.
+		if cfg.KubeConfig != "" {
+			os.Setenv("KUBECONFIG", cfg.KubeConfig)
+		}
+
 		return nil
 	},
 }
@@ -59,6 +65,7 @@ func Execute() {
 func init() {
 	// Bind more cache specific persistent flags.
 	flags := rootCmd.PersistentFlags()
+	flags.StringVar(&cfg.KubeConfig, "kubeconfig", cfg.KubeConfig, "Specify the path to the kubeconfig file")
 	flags.DurationVar(&cfg.Timeout, "timeout", cfg.Timeout, "Specify the timeout for benchmarking")
 	flags.StringVar(&cfg.LogLevel, "log-level", cfg.LogLevel, "Specify the log level [debug, info, warn, error, fatal, panic], default is info")
 

@@ -17,6 +17,7 @@
 package util
 
 import (
+	"context"
 	"fmt"
 	"os/exec"
 	"strings"
@@ -33,26 +34,33 @@ type PodExec struct {
 
 // NewPodExec creates a new PodExec.
 func NewPodExec(namespace string, name string, container string) *PodExec {
-	return &PodExec{
-		namespace: namespace,
-		name:      name,
-		container: container,
-	}
+	return &PodExec{namespace, name, container}
 }
 
 // Command returns a pod exec command.
-func (p *PodExec) Command(arg ...string) *exec.Cmd {
+func (p *PodExec) Command(ctx context.Context, arg ...string) *exec.Cmd {
 	extArgs := []string{"-n", p.namespace, "exec", p.name, "--"}
 	if p.container != "" {
 		extArgs = []string{"-n", p.namespace, "exec", "-c", p.container, p.name, "--"}
 	}
 
 	extArgs = append(extArgs, arg...)
-	return KubeCtlCommand(extArgs...)
+	return KubeCtlCommand(ctx, extArgs...)
+}
+
+// GetPods returns a list of pods.
+func GetPods(ctx context.Context, namespace string, label string) ([]string, error) {
+	cmd := KubeCtlCommand(ctx, "get", "pods", "-n", namespace, "-l", label, "-o", "jsonpath={.items[*].metadata.name}")
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get pods: %w", err)
+	}
+
+	return strings.Fields(string(output)), nil
 }
 
 // KubeCtlCommand returns a kubectl command.
-func KubeCtlCommand(arg ...string) *exec.Cmd {
+func KubeCtlCommand(ctx context.Context, arg ...string) *exec.Cmd {
 	logrus.Debug(fmt.Sprintf(`kubectl command: "kubectl" "%s"`, strings.Join(arg, `" "`)))
-	return exec.Command("kubectl", arg...)
+	return exec.CommandContext(ctx, "kubectl", arg...)
 }
