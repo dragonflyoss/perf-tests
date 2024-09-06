@@ -35,7 +35,7 @@ const (
 )
 
 type FileServer interface {
-	GetFileURL(FileSizeLevel) (*url.URL, error)
+	GetFileURL(FileSizeLevel, string) (*url.URL, error)
 }
 
 type fileServer struct {
@@ -46,7 +46,7 @@ func NewFileServer(namespace string) FileServer {
 	return &fileServer{namespace}
 }
 
-func (f *fileServer) GetFileURL(fileSizeLevel FileSizeLevel) (*url.URL, error) {
+func (f *fileServer) GetFileURL(fileSizeLevel FileSizeLevel, tag string) (*url.URL, error) {
 	baseURL := fmt.Sprintf("http://file-server.%s.svc", f.namespace)
 
 	u, err := url.Parse(baseURL)
@@ -54,5 +54,10 @@ func (f *fileServer) GetFileURL(fileSizeLevel FileSizeLevel) (*url.URL, error) {
 		return nil, err
 	}
 	u.Path = path.Join(u.Path, string(fileSizeLevel))
+
+	// Add tag query parameter.
+	query := u.Query()
+	query.Set("tag", tag)
+	u.RawQuery = query.Encode()
 	return u, nil
 }

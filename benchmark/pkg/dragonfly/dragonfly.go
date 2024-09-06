@@ -189,7 +189,7 @@ func (d *dragonfly) DownloadFileByDfget(ctx context.Context, fileSizeLevel backe
 
 // downloadFileByDfget downloads file by dfget.
 func (d *dragonfly) downloadFileByDfget(ctx context.Context, podExec *util.PodExec, fileSizeLevel backend.FileSizeLevel) error {
-	downloadURL, err := d.fileServer.GetFileURL(fileSizeLevel)
+	downloadURL, err := d.fileServer.GetFileURL(fileSizeLevel, "dfget")
 	if err != nil {
 		logrus.Errorf("failed to get file URL: %v", err)
 		return err
@@ -236,7 +236,7 @@ func (d *dragonfly) DownloadFileByProxy(ctx context.Context, fileSizeLevel backe
 
 // downloadFileByProxy downloads file by proxy.
 func (d *dragonfly) downloadFileByProxy(ctx context.Context, podExec *util.PodExec, fileSizeLevel backend.FileSizeLevel) error {
-	downloadURL, err := d.fileServer.GetFileURL(fileSizeLevel)
+	downloadURL, err := d.fileServer.GetFileURL(fileSizeLevel, "proxy")
 	if err != nil {
 		logrus.Errorf("failed to get file URL: %v", err)
 		return err
