@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"net/url"
 	"path"
+
+	"github.com/google/uuid"
 )
 
 type FileSizeLevel string
@@ -58,6 +60,7 @@ func (f *fileServer) GetFileURL(fileSizeLevel FileSizeLevel, tag string) (*url.U
 	// Add tag query parameter.
 	query := u.Query()
 	query.Set("tag", tag)
+	query.Set("uuid", uuid.New().String())
 	u.RawQuery = query.Encode()
 	return u, nil
 }
