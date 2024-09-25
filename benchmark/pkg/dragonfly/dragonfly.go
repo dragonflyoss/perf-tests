@@ -255,7 +255,7 @@ func (d *dragonfly) downloadFileByProxy(ctx context.Context, podExec *util.PodEx
 
 // getClientPods returns the client pods.
 func (d *dragonfly) getClientPods(ctx context.Context) ([]string, error) {
-	pods, err := util.GetPods(ctx, d.namespace, "app=client")
+	pods, err := util.GetPods(ctx, d.namespace, "component=client")
 	if err != nil {
 		logrus.Errorf("failed to get pods: %v", err)
 		return nil, err
