@@ -19,14 +19,19 @@ package dragonfly
 import (
 	"context"
 	"errors"
-	"os"
+	"fmt"
 	"path"
 
 	"github.com/dragonflyoss/perf-tests/benchmark/pkg/backend"
 	"github.com/dragonflyoss/perf-tests/benchmark/pkg/config"
 	"github.com/dragonflyoss/perf-tests/benchmark/pkg/util"
+	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
+)
+
+const (
+	OutputDir = "/tmp"
 )
 
 // Dragonfly represents a benchmark runner for Dragonfly.
@@ -42,6 +47,9 @@ type Dragonfly interface {
 
 	// DownloadFileByProxy downloads file by proxy.
 	DownloadFileByProxy(context.Context, backend.FileSizeLevel) error
+
+	// Cleanup cleans up the downloaded files.
+	Cleanup(context.Context) error
 }
 
 // dragonfly implements the Dragonfly interface.
@@ -195,10 +203,15 @@ func (d *dragonfly) downloadFileByDfget(ctx context.Context, podExec *util.PodEx
 		return err
 	}
 
-	outputPath := path.Join(os.TempDir(), path.Base(downloadURL.Path))
-	output, err := podExec.Command(ctx, "dfget", downloadURL.String(), "--output", outputPath).CombinedOutput()
+	outputPath, err := d.getOutput(fileSizeLevel, "dfget")
 	if err != nil {
-		logrus.Errorf("failed to download file: %v", err)
+		logrus.Errorf("failed to get output path: %v", err)
+		return err
+	}
+
+	output, err := podExec.Command(ctx, "sh", "-c", fmt.Sprintf("dfget '%s' --output %s", downloadURL.String(), outputPath)).CombinedOutput()
+	if err != nil {
+		logrus.Errorf("failed to download file: %v \nmessage: %s", err, string(output))
 		return err
 	}
 
@@ -242,14 +255,50 @@ func (d *dragonfly) downloadFileByProxy(ctx context.Context, podExec *util.PodEx
 		return err
 	}
 
-	outputPath := path.Join(os.TempDir(), path.Base(downloadURL.Path))
-	output, err := podExec.Command(ctx, "curl", "-x", "http://127.0.0.1:4001", downloadURL.String(), "--output", outputPath).CombinedOutput()
+	outputPath, err := d.getOutput(fileSizeLevel, "proxy")
 	if err != nil {
-		logrus.Errorf("failed to download file: %v", err)
+		logrus.Errorf("failed to get output path: %v", err)
+		return err
+	}
+
+	output, err := podExec.Command(ctx, "sh", "-c", fmt.Sprintf("curl -x %s '%s' --output %s", "http://127.0.0.1:4001", downloadURL.String(), outputPath)).CombinedOutput()
+	if err != nil {
+		logrus.Errorf("failed to download file: %v \nmessage: %s", err, string(output))
 		return err
 	}
 
 	logrus.Debugf("curl output: %s", string(output))
+	return nil
+}
+
+// Cleanup cleans up the downloaded files.
+func (d *dragonfly) Cleanup(ctx context.Context) error {
+	pods, err := d.getClientPods(ctx)
+	if err != nil {
+		return err
+	}
+
+	var eg errgroup.Group
+	for _, pod := range pods {
+		podExec := util.NewPodExec(d.namespace, pod, "client")
+		eg.Go(func(podExec *util.PodExec) func() error {
+			return func() error {
+				output, err := podExec.Command(ctx, "sh", "-c", fmt.Sprintf("rm -rf %s/*", OutputDir)).CombinedOutput()
+				if err != nil {
+					logrus.Errorf("failed to cleanup: %v \nmessage: %s", err, string(output))
+					return err
+				}
+
+				return nil
+			}
+		}(podExec))
+	}
+
+	if err := eg.Wait(); err != nil {
+		logrus.Errorf("error processing pods: %v", err)
+		return err
+	}
+
 	return nil
 }
 
@@ -267,4 +316,9 @@ func (d *dragonfly) getClientPods(ctx context.Context) ([]string, error) {
 	}
 
 	return pods, nil
+}
+
+// getOutput returns the output path.
+func (d *dragonfly) getOutput(fileSizeLevel backend.FileSizeLevel, tag string) (string, error) {
+	return path.Join(OutputDir, fmt.Sprintf("%s-%s-%s", string(fileSizeLevel), tag, uuid.New().String())), nil
 }
