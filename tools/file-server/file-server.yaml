@@ -8,6 +8,7 @@ spec:
     app: dragonfly
     component: file-server
   type: ClusterIP
+  clusterIP: None
   ports:
   - name: nginx
     port: 80

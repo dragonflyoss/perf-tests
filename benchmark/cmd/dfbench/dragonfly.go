@@ -70,7 +70,15 @@ func runDragonfly(ctx context.Context, cfg *config.Config) error {
 			logrus.Errorf("failed to run dragonfly benchmark: %v", err)
 			return err
 		}
+		logrus.Info("completed dragonfly benchmark")
 
+		logrus.Info("cleaning up dragonfly benchmark")
+		if err := dragonfly.Cleanup(ctx); err != nil {
+			logrus.Errorf("failed to cleanup dragonfly benchmark: %v", err)
+			return err
+		}
+
+		logrus.Info("completed dragonfly cleanup")
 		return nil
 	}
 
@@ -80,6 +88,14 @@ func runDragonfly(ctx context.Context, cfg *config.Config) error {
 		logrus.Errorf("failed to run dragonfly benchmark: %v", err)
 		return err
 	}
+	logrus.Info("completed dragonfly benchmark")
 
+	logrus.Info("cleaning up dragonfly benchmark")
+	if err := dragonfly.Cleanup(ctx); err != nil {
+		logrus.Errorf("failed to cleanup dragonfly benchmark: %v", err)
+		return err
+	}
+
+	logrus.Info("completed dragonfly cleanup")
 	return nil
 }
