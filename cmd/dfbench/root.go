@@ -19,7 +19,7 @@ package dfbench
 import (
 	"os"
 
-	"github.com/dragonflyoss/perf-tests/benchmark/pkg/config"
+	"github.com/dragonflyoss/perf-tests/pkg/config"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
