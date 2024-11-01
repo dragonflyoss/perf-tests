@@ -78,3 +78,9 @@ func init() {
 	rootCmd.AddCommand(dragonflyCmd)
 	rootCmd.AddCommand(nydusCmd)
 }
+
+func main() {
+	if err := rootCmd.Execute(); err != nil {
+		os.Exit(1)
+	}
+}
