@@ -25,7 +25,6 @@ jobs:
         with:
           version: v1.54
           args: --verbose
-          working-directory: benchmark
 
       - name: Markdown lint
         uses: docker://avtodev/markdown-lint:v1

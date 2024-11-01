@@ -23,8 +23,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dragonflyoss/perf-tests/benchmark/pkg/backend"
-	"github.com/dragonflyoss/perf-tests/benchmark/pkg/config"
+	"github.com/dragonflyoss/perf-tests/pkg/backend"
+	"github.com/dragonflyoss/perf-tests/pkg/config"
 	"github.com/google/uuid"
 	"github.com/olekukonko/tablewriter"
 )
