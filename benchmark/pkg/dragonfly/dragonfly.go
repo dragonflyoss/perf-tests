@@ -21,9 +21,11 @@ import (
 	"errors"
 	"fmt"
 	"path"
+	"time"
 
 	"github.com/dragonflyoss/perf-tests/benchmark/pkg/backend"
 	"github.com/dragonflyoss/perf-tests/benchmark/pkg/config"
+	"github.com/dragonflyoss/perf-tests/benchmark/pkg/stats"
 	"github.com/dragonflyoss/perf-tests/benchmark/pkg/util"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
@@ -54,13 +56,19 @@ type Dragonfly interface {
 
 // dragonfly implements the Dragonfly interface.
 type dragonfly struct {
-	namespace  string
+	// namespace is the namespace of the benchmark.
+	namespace string
+
+	// fileServer is the file server of the benchmark.
 	fileServer backend.FileServer
+
+	// stats is the statistics of the benchmark.
+	stats stats.Stats
 }
 
 // New creates a new benchmark runner for Dragonfly.
-func New(namespace string, fileServer backend.FileServer) Dragonfly {
-	return &dragonfly{namespace, fileServer}
+func New(namespace string, fileServer backend.FileServer, stats stats.Stats) Dragonfly {
+	return &dragonfly{namespace, fileServer, stats}
 }
 
 // Run runs all benchmarks by downloader.
@@ -209,12 +217,14 @@ func (d *dragonfly) downloadFileByDfget(ctx context.Context, podExec *util.PodEx
 		return err
 	}
 
+	createdAt := time.Now()
 	output, err := podExec.Command(ctx, "sh", "-c", fmt.Sprintf("dfget '%s' --output %s", downloadURL.String(), outputPath)).CombinedOutput()
 	if err != nil {
 		logrus.Errorf("failed to download file: %v \nmessage: %s", err, string(output))
 		return err
 	}
 
+	d.stats.AddDownload(downloadURL, config.DownloaderDfget, fileSizeLevel, createdAt, time.Now())
 	logrus.Debugf("dfget output: %s", string(output))
 	return nil
 }
@@ -261,11 +271,13 @@ func (d *dragonfly) downloadFileByProxy(ctx context.Context, podExec *util.PodEx
 		return err
 	}
 
+	createdAt := time.Now()
 	output, err := podExec.Command(ctx, "sh", "-c", fmt.Sprintf("curl -x %s '%s' --output %s", "http://127.0.0.1:4001", downloadURL.String(), outputPath)).CombinedOutput()
 	if err != nil {
 		logrus.Errorf("failed to download file: %v \nmessage: %s", err, string(output))
 		return err
 	}
+	d.stats.AddDownload(downloadURL, config.DownloaderProxy, fileSizeLevel, createdAt, time.Now())
 
 	logrus.Debugf("curl output: %s", string(output))
 	return nil
@@ -314,7 +326,6 @@ func (d *dragonfly) getClientPods(ctx context.Context) ([]string, error) {
 		logrus.Errorf("no client pod found")
 		return nil, errors.New("no client pod found")
 	}
-
 	return pods, nil
 }
 
