@@ -16,8 +16,10 @@
 
 package main
 
-import "github.com/dragonflyoss/perf-tests/cmd/dfbench"
+import (
+	"github.com/dragonflyoss/perf-tests/cmd/dfbench/cmd"
+)
 
 func main() {
-	dfbench.Execute()
+	cmd.Execute()
 }
