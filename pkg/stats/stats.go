@@ -125,6 +125,7 @@ func printTable(downloads map[backend.FileSizeLevel][]*Download) {
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetHeader([]string{"File Size Level", "Times", "Min Cost", "Max Cost", "Avg Cost"})
 
+	rows := map[backend.FileSizeLevel][]string{}
 	for fileSizeLevel, records := range downloads {
 		var minCost, maxCost, totalCost time.Duration
 		if len(records) > 0 {
@@ -145,13 +146,20 @@ func printTable(downloads map[backend.FileSizeLevel][]*Download) {
 		}
 
 		avgCost := totalCost / time.Duration(len(records))
-		table.Append([]string{
-			fmt.Sprintf("%s", fileSizeLevel),
+		rows[fileSizeLevel] = []string{
+			fileSizeLevel.String(),
 			fmt.Sprintf("%d", len(records)),
 			formatDuration(minCost),
 			formatDuration(maxCost),
 			formatDuration(avgCost),
-		})
+		}
+	}
+
+	for _, fileSizeLevel := range backend.FileSizeLevels {
+		if row, ok := rows[fileSizeLevel]; ok {
+			table.Append(row)
+			continue
+		}
 	}
 
 	table.SetAlignment(tablewriter.ALIGN_LEFT)

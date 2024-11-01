@@ -26,6 +26,27 @@ import (
 
 type FileSizeLevel string
 
+func (f FileSizeLevel) String() string {
+	switch f {
+	case FileSizeLevelNano:
+		return "Nano(1B)"
+	case FileSizeLevelMicro:
+		return "Micro(1KB)"
+	case FileSizeLevelSmall:
+		return "Small(1MB)"
+	case FileSizeLevelMedium:
+		return "Medium(10MB)"
+	case FileSizeLevelLarge:
+		return "Large(1GB)"
+	case FileSizeLevelXLarge:
+		return "XLarge(10GB)"
+	case FileSizeLevelXXLarge:
+		return "XXLarge(30GB)"
+	default:
+		return "Unknow"
+	}
+}
+
 const (
 	FileSizeLevelNano    FileSizeLevel = "nano"
 	FileSizeLevelMicro   FileSizeLevel = "micro"
@@ -35,6 +56,16 @@ const (
 	FileSizeLevelXLarge  FileSizeLevel = "xlarge"
 	FileSizeLevelXXLarge FileSizeLevel = "xxlarge"
 )
+
+var FileSizeLevels = []FileSizeLevel{
+	FileSizeLevelNano,
+	FileSizeLevelMicro,
+	FileSizeLevelSmall,
+	FileSizeLevelMedium,
+	FileSizeLevelLarge,
+	FileSizeLevelXLarge,
+	FileSizeLevelXXLarge,
+}
 
 type FileServer interface {
 	GetFileURL(FileSizeLevel, string) (*url.URL, error)
