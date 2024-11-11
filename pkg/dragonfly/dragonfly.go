@@ -21,7 +21,6 @@ import (
 	"errors"
 	"fmt"
 	"path"
-	"time"
 
 	"github.com/dragonflyoss/perf-tests/pkg/backend"
 	"github.com/dragonflyoss/perf-tests/pkg/config"
@@ -200,6 +199,11 @@ func (d *dragonfly) DownloadFileByDfget(ctx context.Context, fileSizeLevel backe
 		return err
 	}
 
+	if err := d.stats.CollectClientMetrics(ctx, config.DownloaderDfget, fileSizeLevel); err != nil {
+		logrus.Errorf("failed to collect client metrics: %v", err)
+		return err
+	}
+
 	return nil
 }
 
@@ -217,14 +221,12 @@ func (d *dragonfly) downloadFileByDfget(ctx context.Context, podExec *util.PodEx
 		return err
 	}
 
-	createdAt := time.Now()
 	output, err := podExec.Command(ctx, "sh", "-c", fmt.Sprintf("dfget '%s' --output %s", downloadURL.String(), outputPath)).CombinedOutput()
 	if err != nil {
 		logrus.Errorf("failed to download file: %v \nmessage: %s", err, string(output))
 		return err
 	}
 
-	d.stats.AddDownload(downloadURL, config.DownloaderDfget, fileSizeLevel, createdAt, time.Now())
 	logrus.Debugf("dfget output: %s", string(output))
 	return nil
 }
@@ -254,6 +256,11 @@ func (d *dragonfly) DownloadFileByProxy(ctx context.Context, fileSizeLevel backe
 		return err
 	}
 
+	if err := d.stats.CollectClientMetrics(ctx, config.DownloaderProxy, fileSizeLevel); err != nil {
+		logrus.Errorf("failed to collect client metrics: %v", err)
+		return err
+	}
+
 	return nil
 }
 
@@ -271,13 +278,11 @@ func (d *dragonfly) downloadFileByProxy(ctx context.Context, podExec *util.PodEx
 		return err
 	}
 
-	createdAt := time.Now()
 	output, err := podExec.Command(ctx, "sh", "-c", fmt.Sprintf("curl -x %s '%s' --output %s", "http://127.0.0.1:4001", downloadURL.String(), outputPath)).CombinedOutput()
 	if err != nil {
 		logrus.Errorf("failed to download file: %v \nmessage: %s", err, string(output))
 		return err
 	}
-	d.stats.AddDownload(downloadURL, config.DownloaderProxy, fileSizeLevel, createdAt, time.Now())
 
 	logrus.Debugf("curl output: %s", string(output))
 	return nil
@@ -326,6 +331,7 @@ func (d *dragonfly) getClientPods(ctx context.Context) ([]string, error) {
 		logrus.Errorf("no client pod found")
 		return nil, errors.New("no client pod found")
 	}
+
 	return pods, nil
 }
 

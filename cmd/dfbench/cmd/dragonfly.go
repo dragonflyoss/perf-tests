@@ -62,7 +62,7 @@ func init() {
 
 // runDragonfly runs the dragonfly benchmark.
 func runDragonfly(ctx context.Context, cfg *config.Config) error {
-	stats := stats.New()
+	stats := stats.New(cfg.Dragonfly.Namespace)
 	fileServer := backend.NewFileServer(cfg.Dragonfly.Namespace)
 	dragonfly := dragonfly.New(cfg.Dragonfly.Namespace, fileServer, stats)
 
@@ -73,7 +73,11 @@ func runDragonfly(ctx context.Context, cfg *config.Config) error {
 			logrus.Errorf("failed to run dragonfly benchmark: %v", err)
 			return err
 		}
-		stats.PrettyPrint()
+
+		if err := stats.PrettyPrint(); err != nil {
+			logrus.Errorf("failed to print dragonfly benchmark statistics: %v", err)
+			return err
+		}
 
 		if err := dragonfly.Cleanup(ctx); err != nil {
 			logrus.Errorf("failed to cleanup dragonfly benchmark: %v", err)
@@ -88,7 +92,11 @@ func runDragonfly(ctx context.Context, cfg *config.Config) error {
 		logrus.Errorf("failed to run dragonfly benchmark: %v", err)
 		return err
 	}
-	stats.PrettyPrint()
+
+	if err := stats.PrettyPrint(); err != nil {
+		logrus.Errorf("failed to print dragonfly benchmark statistics: %v", err)
+		return err
+	}
 
 	if err := dragonfly.Cleanup(ctx); err != nil {
 		logrus.Errorf("failed to cleanup dragonfly benchmark: %v", err)
