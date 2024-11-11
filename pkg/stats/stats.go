@@ -17,40 +17,50 @@
 package stats
 
 import (
+	"bytes"
+	"context"
+	"errors"
 	"fmt"
-	"net/url"
+	"math"
 	"os"
 	"sync"
 	"time"
 
 	"github.com/dragonflyoss/perf-tests/pkg/backend"
 	"github.com/dragonflyoss/perf-tests/pkg/config"
+	"github.com/dragonflyoss/perf-tests/pkg/util"
 	"github.com/google/uuid"
 	"github.com/olekukonko/tablewriter"
+	dto "github.com/prometheus/client_model/go"
+	"github.com/prometheus/common/expfmt"
+	"github.com/sirupsen/logrus"
 )
 
 // Stats represents the statistics of the benchmark.
 type Stats interface {
-	// AddDownload adds a download record to the statistics.
-	AddDownload(*url.URL, string, backend.FileSizeLevel, time.Time, time.Time)
-
-	// GetDownloads returns all download records.
+	// GetDownloads returns the download statistics.
 	GetDownloads() []*Download
 
+	// CollectClientMetrics collects the client metrics and resets the metrics.
+	CollectClientMetrics(ctx context.Context, downloader string, fileSizeLevel backend.FileSizeLevel) error
+
 	// PrettyPrint prints the statistics in a pretty format.
-	PrettyPrint()
+	PrettyPrint() error
 }
 
 // stats implements the Stats interface.
 type stats struct {
 	// downloads stores the download statistics.
 	downloads *sync.Map
+
+	// namespace is the namespace of the benchmark.
+	namespace string
 }
 
 // Download represents the download statistics.
 type Download struct {
-	// url is the URL of the file.
-	url *url.URL
+	// podName is the name of the pod.
+	podName string
 
 	// downloader is the downloader used to download the file.
 	downloader string
@@ -58,35 +68,18 @@ type Download struct {
 	// fileSizeLevel is the file size level of the file.
 	fileSizeLevel backend.FileSizeLevel
 
-	// cost is the time cost of downloading the file.
-	cost time.Duration
-
-	// createdAt is the time when the download started.
-	createdAt time.Time
-
-	// finishedAt is the time when the download finished.
-	finishedAt time.Time
+	// metricFamilies is the metric families of the download.
+	metricFamilies map[string]*dto.MetricFamily
 }
 
 // New creates a new Stats instance.
-func New() Stats {
-	return &stats{downloads: &sync.Map{}}
+func New(namespace string) Stats {
+	return &stats{downloads: &sync.Map{}, namespace: namespace}
 }
 
-// AddDownload adds a download record to the statistics.
-func (s *stats) AddDownload(url *url.URL, downloader string, fileSizeLevel backend.FileSizeLevel, createdAt time.Time, finishedAt time.Time) {
-	s.downloads.Store(uuid.New().String(), &Download{
-		url:           url,
-		downloader:    downloader,
-		fileSizeLevel: fileSizeLevel,
-		cost:          finishedAt.Sub(createdAt),
-		createdAt:     createdAt,
-		finishedAt:    finishedAt,
-	})
-}
-
+// GetDownloads returns the download statistics.
 func (s *stats) GetDownloads() []*Download {
-	downloads := make([]*Download, 0)
+	downloads := []*Download{}
 	s.downloads.Range(func(key, value interface{}) bool {
 		downloads = append(downloads, value.(*Download))
 		return true
@@ -95,13 +88,90 @@ func (s *stats) GetDownloads() []*Download {
 	return downloads
 }
 
-// PrettyPrint prints the statistics in a pretty format.
-func (s *stats) PrettyPrint() {
-	downloads := s.GetDownloads()
+// collectClientMetrics collects the client metrics.
+func (s *stats) CollectClientMetrics(ctx context.Context, downloader string, fileSizeLevel backend.FileSizeLevel) error {
+	clientPods, err := s.getClientPods(ctx)
+	if err != nil {
+		logrus.Errorf("failed to get client pods: %v", err)
+		return err
+	}
 
+	for _, pod := range clientPods {
+		data, err := s.getClientMetrics(ctx, pod)
+		if err != nil {
+			logrus.Errorf("failed to get client metrics: %v", err)
+			return err
+		}
+		reader := bytes.NewReader(data)
+
+		parser := expfmt.TextParser{}
+		metricFamilies, err := parser.TextToMetricFamilies(reader)
+		if err != nil {
+			logrus.Errorf("failed to parse metrics: %v", err)
+			return err
+		}
+
+		s.downloads.Store(uuid.New().String(), &Download{
+			podName:        pod,
+			downloader:     downloader,
+			fileSizeLevel:  fileSizeLevel,
+			metricFamilies: metricFamilies,
+		})
+
+		if err := s.resetClientMetrics(ctx, pod); err != nil {
+			logrus.Errorf("failed to reset client metrics: %v", err)
+			return err
+		}
+	}
+
+	return nil
+}
+
+// getClientMetrics collects the client metrics by pod name
+func (s *stats) getClientMetrics(ctx context.Context, name string) ([]byte, error) {
+	podExec := util.NewPodExec(s.namespace, name, "client")
+	output, err := podExec.Command(ctx, "sh", "-c", "curl -s http://127.0.0.1:4002/metrics").CombinedOutput()
+	if err != nil {
+		logrus.Errorf("failed to cleanup: %v \nmessage: %s", err, string(output))
+		return nil, err
+	}
+
+	return output, nil
+}
+
+// resetClientMetrics resets the client metrics by pod name
+func (s *stats) resetClientMetrics(ctx context.Context, name string) error {
+	podExec := util.NewPodExec(s.namespace, name, "client")
+	output, err := podExec.Command(ctx, "sh", "-c", "curl -s -X DELETE http://127.0.0.1:4002/metrics").CombinedOutput()
+	if err != nil {
+		logrus.Errorf("failed to cleanup: %v \nmessage: %s", err, string(output))
+		return err
+	}
+
+	return nil
+}
+
+// getClientPods returns the client pods.
+func (s *stats) getClientPods(ctx context.Context) ([]string, error) {
+	pods, err := util.GetPods(ctx, s.namespace, "component=client")
+	if err != nil {
+		logrus.Errorf("failed to get pods: %v", err)
+		return nil, err
+	}
+
+	if len(pods) == 0 {
+		logrus.Errorf("no client pod found")
+		return nil, errors.New("no client pod found")
+	}
+
+	return pods, nil
+}
+
+// PrettyPrint prints the statistics in a pretty format.
+func (s *stats) PrettyPrint() error {
+	downloads := s.GetDownloads()
 	proxyDownloads := make(map[backend.FileSizeLevel][]*Download)
 	dfgetDownloads := make(map[backend.FileSizeLevel][]*Download)
-
 	for _, download := range downloads {
 		switch download.downloader {
 		case config.DownloaderDfget:
@@ -112,40 +182,63 @@ func (s *stats) PrettyPrint() {
 	}
 
 	if len(dfgetDownloads) != 0 {
-		printTable(dfgetDownloads)
+		if err := printTable(dfgetDownloads); err != nil {
+			return err
+		}
 	}
 
 	if len(proxyDownloads) != 0 {
-		printTable(proxyDownloads)
+		if err := printTable(proxyDownloads); err != nil {
+			return err
+		}
 	}
+
+	return nil
 }
 
 // printTable prints the download statistics in a table format.
-func printTable(downloads map[backend.FileSizeLevel][]*Download) {
+func printTable(downloads map[backend.FileSizeLevel][]*Download) error {
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetHeader([]string{"File Size Level", "Times", "Min Cost", "Max Cost", "Avg Cost"})
 
 	rows := map[backend.FileSizeLevel][]string{}
 	for fileSizeLevel, records := range downloads {
-		var minCost, maxCost, totalCost time.Duration
-		if len(records) > 0 {
-			minCost = records[0].cost
-			maxCost = records[0].cost
-		}
+		maxCost := time.Duration(-math.MaxInt64)
+		minCost := time.Duration(math.MaxInt64)
 
+		var (
+			totalCost time.Duration
+			n         uint64
+		)
 		for _, record := range records {
-			if record.cost < minCost {
-				minCost = record.cost
-			}
+			for name, mf := range record.metricFamilies {
+				if name == "dragonfly_client_download_task_duration_milliseconds" {
+					for _, metrics := range mf.GetMetric() {
+						for _, label := range metrics.GetLabel() {
+							if *label.Name == "task_size_level" && *label.Value == fileSizeLevel.TaskSizeLevel() {
+								if metrics.GetHistogram().GetSampleCount() != 1 {
+									return errors.New("invalid sample count")
+								}
 
-			if record.cost > maxCost {
-				maxCost = record.cost
-			}
+								cost := time.Duration(int64(metrics.GetHistogram().GetSampleSum()) * int64(time.Millisecond))
+								totalCost += cost
+								n += metrics.GetHistogram().GetSampleCount()
 
-			totalCost += record.cost
+								if cost < minCost {
+									minCost = cost
+								}
+
+								if cost > maxCost {
+									maxCost = cost
+								}
+							}
+						}
+					}
+				}
+			}
 		}
 
-		avgCost := totalCost / time.Duration(len(records))
+		avgCost := totalCost / time.Duration(n)
 		rows[fileSizeLevel] = []string{
 			fileSizeLevel.String(),
 			fmt.Sprintf("%d", len(records)),
@@ -165,6 +258,7 @@ func printTable(downloads map[backend.FileSizeLevel][]*Download) {
 	table.SetAlignment(tablewriter.ALIGN_LEFT)
 	table.SetRowLine(true)
 	table.Render()
+	return nil
 }
 
 // formatDuration formats the duration to a string.

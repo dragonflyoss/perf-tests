@@ -47,6 +47,27 @@ func (f FileSizeLevel) String() string {
 	}
 }
 
+func (f FileSizeLevel) TaskSizeLevel() string {
+	switch f {
+	case FileSizeLevelNano:
+		return "1"
+	case FileSizeLevelMicro:
+		return "1"
+	case FileSizeLevelSmall:
+		return "2"
+	case FileSizeLevelMedium:
+		return "4"
+	case FileSizeLevelLarge:
+		return "11"
+	case FileSizeLevelXLarge:
+		return "13"
+	case FileSizeLevelXXLarge:
+		return "14"
+	default:
+		return "unknown"
+	}
+}
+
 const (
 	FileSizeLevelNano    FileSizeLevel = "nano"
 	FileSizeLevelMicro   FileSizeLevel = "micro"
