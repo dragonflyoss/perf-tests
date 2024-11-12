@@ -29,6 +29,7 @@ import (
 	"github.com/dragonflyoss/perf-tests/pkg/backend"
 	"github.com/dragonflyoss/perf-tests/pkg/config"
 	"github.com/dragonflyoss/perf-tests/pkg/util"
+	humanize "github.com/dustin/go-humanize"
 	"github.com/google/uuid"
 	"github.com/olekukonko/tablewriter"
 	dto "github.com/prometheus/client_model/go"
@@ -43,6 +44,9 @@ type Stats interface {
 
 	// CollectClientMetrics collects the client metrics and resets the metrics.
 	CollectClientMetrics(ctx context.Context, downloader string, fileSizeLevel backend.FileSizeLevel) error
+
+	// ResetClientMetrics resets the client metrics.
+	ResetClientMetrics(ctx context.Context) error
 
 	// PrettyPrint prints the statistics in a pretty format.
 	PrettyPrint() error
@@ -127,6 +131,24 @@ func (s *stats) CollectClientMetrics(ctx context.Context, downloader string, fil
 	return nil
 }
 
+// ResetClientMetrics resets the client metrics.
+func (s *stats) ResetClientMetrics(ctx context.Context) error {
+	clientPods, err := s.getClientPods(ctx)
+	if err != nil {
+		logrus.Errorf("failed to get client pods: %v", err)
+		return err
+	}
+
+	for _, pod := range clientPods {
+		if err := s.resetClientMetrics(ctx, pod); err != nil {
+			logrus.Errorf("failed to reset client metrics: %v", err)
+			return err
+		}
+	}
+
+	return nil
+}
+
 // getClientMetrics collects the client metrics by pod name
 func (s *stats) getClientMetrics(ctx context.Context, name string) ([]byte, error) {
 	podExec := util.NewPodExec(s.namespace, name, "client")
@@ -199,7 +221,7 @@ func (s *stats) PrettyPrint() error {
 // printTable prints the download statistics in a table format.
 func printTable(downloads map[backend.FileSizeLevel][]*Download) error {
 	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader([]string{"File Size Level", "Times", "Min Cost", "Max Cost", "Avg Cost"})
+	table.SetHeader([]string{"File Size Level", "Times", "Min Cost", "Max Cost", "Avg Cost", "Back To Source Traffic", "Remote Peer Traffic", "Local Peer Traffic", "Back To Source Rate"})
 
 	rows := map[backend.FileSizeLevel][]string{}
 	for fileSizeLevel, records := range downloads {
@@ -207,12 +229,32 @@ func printTable(downloads map[backend.FileSizeLevel][]*Download) error {
 		minCost := time.Duration(math.MaxInt64)
 
 		var (
-			totalCost time.Duration
-			n         uint64
+			n                                                        uint64
+			totalCost                                                time.Duration
+			backToSourceTraffic, remotePeerTraffic, localPeerTraffic float64
 		)
 		for _, record := range records {
 			for name, mf := range record.metricFamilies {
-				if name == "dragonfly_client_download_task_duration_milliseconds" {
+				switch name {
+				case "dragonfly_client_download_traffic":
+					for _, metrics := range mf.GetMetric() {
+						for _, label := range metrics.GetLabel() {
+							if *label.Name == "type" {
+								switch *label.Value {
+								case "BACK_TO_SOURCE":
+									backToSourceTraffic += metrics.GetCounter().GetValue()
+								case "REMOTE_PEER":
+									remotePeerTraffic += metrics.GetCounter().GetValue()
+								case "LOCAL_PEER":
+									localPeerTraffic += metrics.GetCounter().GetValue()
+								default:
+									fmt.Printf("invalid traffic type: %s\n", *label.Value)
+									return errors.New("invalid traffic type")
+								}
+							}
+						}
+					}
+				case "dragonfly_client_download_task_duration_milliseconds":
 					for _, metrics := range mf.GetMetric() {
 						for _, label := range metrics.GetLabel() {
 							if *label.Name == "task_size_level" && *label.Value == fileSizeLevel.TaskSizeLevel() {
@@ -245,6 +287,10 @@ func printTable(downloads map[backend.FileSizeLevel][]*Download) error {
 			formatDuration(minCost),
 			formatDuration(maxCost),
 			formatDuration(avgCost),
+			humanize.Bytes(uint64(backToSourceTraffic)),
+			humanize.Bytes(uint64(remotePeerTraffic)),
+			humanize.Bytes(uint64(localPeerTraffic)),
+			fmt.Sprintf("%.2f%%", (backToSourceTraffic)/float64(remotePeerTraffic+localPeerTraffic+backToSourceTraffic)*100),
 		}
 	}
 

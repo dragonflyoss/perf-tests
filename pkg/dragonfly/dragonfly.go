@@ -176,6 +176,11 @@ func (d *dragonfly) RunByFileSizes(ctx context.Context, downloader string, fileS
 
 // DownloadFileByDfget downloads file by dfget.
 func (d *dragonfly) DownloadFileByDfget(ctx context.Context, fileSizeLevel backend.FileSizeLevel) error {
+	if err := d.stats.ResetClientMetrics(ctx); err != nil {
+		logrus.Errorf("failed to reset client metrics: %v", err)
+		return err
+	}
+
 	pods, err := d.getClientPods(ctx)
 	if err != nil {
 		return err
@@ -233,6 +238,11 @@ func (d *dragonfly) downloadFileByDfget(ctx context.Context, podExec *util.PodEx
 
 // DownloadFileByProxy downloads file by proxy.
 func (d *dragonfly) DownloadFileByProxy(ctx context.Context, fileSizeLevel backend.FileSizeLevel) error {
+	if err := d.stats.ResetClientMetrics(ctx); err != nil {
+		logrus.Errorf("failed to reset client metrics: %v", err)
+		return err
+	}
+
 	pods, err := d.getClientPods(ctx)
 	if err != nil {
 		return err
