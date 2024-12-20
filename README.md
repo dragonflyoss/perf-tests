@@ -80,14 +80,14 @@ Join the conversation and help the community.
 - **Slack Channel**: [#dragonfly](https://cloud-native.slack.com/messages/dragonfly/) on [CNCF Slack](https://slack.cncf.io/)
 - **Discussion Group**: <dragonfly-discuss@googlegroups.com>
 - **Developer Group**: <dragonfly-developers@googlegroups.com>
-- **Github Discussions**: [Dragonfly Discussion Forum](https://github.com/dragonflyoss/Dragonfly2/discussions)
+- **Github Discussions**: [Dragonfly Discussion Forum](https://github.com/dragonflyoss/dragonfly/discussions)
 - **Twitter**: [@dragonfly_oss](https://twitter.com/dragonfly_oss)
 
 ## Contributing
 
 You should check out our
-[CONTRIBUTING](https://github.com/dragonflyoss/Dragonfly2/blob/main/CONTRIBUTING.md) and develop the project together.
+[CONTRIBUTING](https://github.com/dragonflyoss/dragonfly/blob/main/CONTRIBUTING.md) and develop the project together.
 
 ## Code of Conduct
 
-Please refer to our [Code of Conduct](https://github.com/dragonflyoss/Dragonfly2/blob/main/CODE_OF_CONDUCT.md).
+Please refer to our [Code of Conduct](https://github.com/dragonflyoss/dragonfly/blob/main/CODE_OF_CONDUCT.md).
