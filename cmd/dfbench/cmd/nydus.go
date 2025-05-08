@@ -47,7 +47,7 @@ var nydusCmd = &cobra.Command{
 func init() {
 	flags := nydusCmd.Flags()
 	flags.Uint32VarP(&cfg.Nydus.Number, "number", "n", cfg.Nydus.Number, "Specify the number of times to run the nydus benchmark")
-	flags.StringVarP(&cfg.Nydus.Namespace, "namespace", "s", cfg.Nydus.Namespace, "Specify the namespace to use for the nydus benchmark")
+	flags.StringVar(&cfg.Nydus.Namespace, "namespace", cfg.Nydus.Namespace, "Specify the namespace to use for the nydus benchmark")
 
 	if err := viper.BindPFlags(flags); err != nil {
 		panic(fmt.Errorf("bind cache nydus flags to viper: %w", err))
