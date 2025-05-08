@@ -51,7 +51,7 @@ var dragonflyCmd = &cobra.Command{
 func init() {
 	flags := dragonflyCmd.Flags()
 	flags.Uint32VarP(&cfg.Dragonfly.Number, "number", "n", cfg.Dragonfly.Number, "Specify the number of times to run the dragonfly benchmark")
-	flags.StringVarP(&cfg.Dragonfly.Namespace, "namespace", "s", cfg.Dragonfly.Namespace, "Specify the namespace to use for the dragonfly benchmark")
+	flags.StringVar(&cfg.Dragonfly.Namespace, "namespace", cfg.Dragonfly.Namespace, "Specify the namespace to use for the dragonfly benchmark")
 	flags.StringVarP(&cfg.Dragonfly.Downloader, "downloader", "d", cfg.Dragonfly.Downloader, "Specify the downloader to use for the dragonfly benchmark [dfget, proxy], default is dfget")
 	flags.StringVar(&cfg.Dragonfly.FileSizeLevel, "file-size-level", cfg.Dragonfly.FileSizeLevel, "Specify the file size level to use for the dragonfly benchmark [nano, micro, small, medium, large, xlarge, xxlarge], default is running all levels")
 
