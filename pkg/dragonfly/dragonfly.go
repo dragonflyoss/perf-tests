@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/url"
 	"path"
 
 	"github.com/dragonflyoss/perf-tests/pkg/backend"
@@ -186,12 +187,18 @@ func (d *dragonfly) DownloadFileByDfget(ctx context.Context, fileSizeLevel backe
 		return err
 	}
 
+	downloadURL, err := d.fileServer.GetFileURL(fileSizeLevel, "dfget")
+	if err != nil {
+		logrus.Errorf("failed to get file URL: %v", err)
+		return err
+	}
+
 	var eg errgroup.Group
 	for _, pod := range pods {
 		podExec := util.NewPodExec(d.namespace, pod, "client")
 		eg.Go(func(podExec *util.PodExec) func() error {
 			return func() error {
-				if err := d.downloadFileByDfget(ctx, podExec, fileSizeLevel); err != nil {
+				if err := d.downloadFileByDfget(ctx, podExec, downloadURL, fileSizeLevel); err != nil {
 					return err
 				}
 				return nil
@@ -213,13 +220,7 @@ func (d *dragonfly) DownloadFileByDfget(ctx context.Context, fileSizeLevel backe
 }
 
 // downloadFileByDfget downloads file by dfget.
-func (d *dragonfly) downloadFileByDfget(ctx context.Context, podExec *util.PodExec, fileSizeLevel backend.FileSizeLevel) error {
-	downloadURL, err := d.fileServer.GetFileURL(fileSizeLevel, "dfget")
-	if err != nil {
-		logrus.Errorf("failed to get file URL: %v", err)
-		return err
-	}
-
+func (d *dragonfly) downloadFileByDfget(ctx context.Context, podExec *util.PodExec, downloadURL *url.URL, fileSizeLevel backend.FileSizeLevel) error {
 	outputPath, err := d.getOutput(fileSizeLevel, "dfget")
 	if err != nil {
 		logrus.Errorf("failed to get output path: %v", err)
@@ -248,12 +249,18 @@ func (d *dragonfly) DownloadFileByProxy(ctx context.Context, fileSizeLevel backe
 		return err
 	}
 
+	downloadURL, err := d.fileServer.GetFileURL(fileSizeLevel, "proxy")
+	if err != nil {
+		logrus.Errorf("failed to get file URL: %v", err)
+		return err
+	}
+
 	var eg errgroup.Group
 	for _, pod := range pods {
 		podExec := util.NewPodExec(d.namespace, pod, "client")
 		eg.Go(func(ctx context.Context, podExec *util.PodExec) func() error {
 			return func() error {
-				if err := d.downloadFileByProxy(ctx, podExec, fileSizeLevel); err != nil {
+				if err := d.downloadFileByProxy(ctx, podExec, downloadURL, fileSizeLevel); err != nil {
 					return err
 				}
 				return nil
@@ -275,13 +282,7 @@ func (d *dragonfly) DownloadFileByProxy(ctx context.Context, fileSizeLevel backe
 }
 
 // downloadFileByProxy downloads file by proxy.
-func (d *dragonfly) downloadFileByProxy(ctx context.Context, podExec *util.PodExec, fileSizeLevel backend.FileSizeLevel) error {
-	downloadURL, err := d.fileServer.GetFileURL(fileSizeLevel, "proxy")
-	if err != nil {
-		logrus.Errorf("failed to get file URL: %v", err)
-		return err
-	}
-
+func (d *dragonfly) downloadFileByProxy(ctx context.Context, podExec *util.PodExec, downloadURL *url.URL, fileSizeLevel backend.FileSizeLevel) error {
 	outputPath, err := d.getOutput(fileSizeLevel, "proxy")
 	if err != nil {
 		logrus.Errorf("failed to get output path: %v", err)
