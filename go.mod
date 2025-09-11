@@ -1,6 +1,6 @@
 module github.com/dragonflyoss/perf-tests
 
-go 1.23.8
+go 1.24.0
 
 require (
 	github.com/dustin/go-humanize v1.0.1
@@ -11,7 +11,7 @@ require (
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/viper v1.20.0
-	golang.org/x/sync v0.15.0
+	golang.org/x/sync v0.17.0
 )
 
 require (
