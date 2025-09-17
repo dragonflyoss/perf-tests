@@ -75,14 +75,16 @@ Running benchmark for all size levels by DFGET ...
 
 ## Community
 
-Join the conversation and help the community.
+Join the conversation and help the community grow. Here are the ways to get involved:
 
 - **Slack Channel**: [#dragonfly](https://cloud-native.slack.com/messages/dragonfly/) on [CNCF Slack](https://slack.cncf.io/)
-- **Github Discussions**: [Dragonfly Discussion Forum](https://github.com/dragonflyoss/dragonfly/discussions)
+- **Github Discussions**: [Dragonfly Discussion Forum][discussion]
 - **Developer Group**: <dragonfly-developers@googlegroups.com>
-- **Maintainer Group**: <dragonfly-maintainers@googlegroups.com>
-- **Github Discussions**: [Dragonfly Discussion Forum](https://github.com/dragonflyoss/dragonfly/discussions)
+- **Mailing Lists**:
+  - **Developers**: <dragonfly-developers@googlegroups.com>
+  - **Maintainers**: <dragonfly-maintainers@googlegroups.com>
 - **Twitter**: [@dragonfly_oss](https://twitter.com/dragonfly_oss)
+- **DingTalk Group**: `22880028764`
 
 ## Contributing
 
