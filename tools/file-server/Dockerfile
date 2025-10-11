@@ -1,5 +1,7 @@
 FROM nginx:alpine
 
+RUN touch /usr/share/nginx/html/zero
+
 RUN dd if=/dev/zero of=/usr/share/nginx/html/nano bs=1 count=1
 
 RUN dd if=/dev/zero of=/usr/share/nginx/html/micro bs=1K count=10
