@@ -221,7 +221,7 @@ func (s *stats) PrettyPrint() error {
 // printTable prints the download statistics in a table format.
 func printTable(downloads map[backend.FileSizeLevel][]*Download) error {
 	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader([]string{"File Size Level", "Times", "Min Cost", "Max Cost", "Avg Cost", "Back To Source Traffic", "Remote Peer Traffic", "Local Peer Traffic", "Back To Source Rate"})
+	table.Header([]string{"File Size Level", "Times", "Min Cost", "Max Cost", "Avg Cost", "Back To Source Traffic", "Remote Peer Traffic", "Local Peer Traffic", "Back To Source Rate"})
 
 	rows := map[backend.FileSizeLevel][]string{}
 	for fileSizeLevel, records := range downloads {
@@ -301,8 +301,6 @@ func printTable(downloads map[backend.FileSizeLevel][]*Download) error {
 		}
 	}
 
-	table.SetAlignment(tablewriter.ALIGN_LEFT)
-	table.SetRowLine(true)
 	table.Render()
 	return nil
 }
