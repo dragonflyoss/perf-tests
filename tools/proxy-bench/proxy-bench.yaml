@@ -1,0 +1,41 @@
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: proxy-bench
+spec:
+  backoffLimit: 0
+  template:
+    metadata:
+      labels:
+        app: dragonfly
+        component: proxy-bench
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: proxy-bench
+          image: dragonflyoss/proxy-bench:latest
+          imagePullPolicy: 'IfNotPresent'
+          resources:
+            requests:
+              cpu: '8'
+              memory: 16Gi
+            limits:
+              cpu: '8'
+              memory: 16Gi
+          # Mode: "repeat" downloads the same URL every request, "random"
+          # appends a unique query string per request.
+          args: ['repeat']
+          env:
+            - name: PROXY
+              value: 'http://seed-client:4001'
+            - name: TARGET_URL
+              value: 'http://file-server/small'
+            - name: RATE
+              value: '100'
+            - name: DURATION
+              value: '60s'
+            # Byte range sent with every request, e.g. "0-1023". Empty means
+            # full downloads.
+            - name: RANGE
+              value: ''
