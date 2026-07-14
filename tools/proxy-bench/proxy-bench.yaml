@@ -16,7 +16,7 @@ spec:
       restartPolicy: Never
       containers:
         - name: proxy-bench
-          image: dragonflyoss/proxy-bench:latest
+          image: dragonflyoss/proxy-bench:v0.1.0
           imagePullPolicy: 'IfNotPresent'
           resources:
             requests:
