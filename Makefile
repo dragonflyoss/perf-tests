@@ -3,7 +3,7 @@ all: help
 # Build file-server image.
 docker-build-file-server:
 	@echo "Begin to use docker build file-server image."
-	docker build -t file-server:latest -f ./tools/file-server/Dockerfile .
+	docker buildx build --platform linux/amd64,linux/arm64 -t file-server:latest -f ./tools/file-server/Dockerfile .
 .PHONY: docker-build-file-server
 
 # Run code lint
