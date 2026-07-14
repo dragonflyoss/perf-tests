@@ -25,6 +25,7 @@ RATE="${RATE:-100}"
 DURATION="${DURATION:-60s}"
 TIMEOUT="${TIMEOUT:-30s}"
 MAX_WORKERS="${MAX_WORKERS:-64}"
+MAX_BODY="${MAX_BODY:-0}"
 OUTPUT_DIR="${OUTPUT_DIR:-bench-results}"
 # Byte range sent with every request, e.g. RANGE=0-1023 or RANGE=bytes=0-1023.
 # Empty means full downloads.
@@ -79,6 +80,7 @@ targets | vegeta attack \
     -duration="${DURATION}" \
     -timeout="${TIMEOUT}" \
     -max-workers="${MAX_WORKERS}" \
+    -max-body="${MAX_BODY}" \
     ${HEADER_ARGS[@]+"${HEADER_ARGS[@]}"} \
     >"${RESULT}"
 
