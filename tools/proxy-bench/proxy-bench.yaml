@@ -20,10 +20,10 @@ spec:
           imagePullPolicy: 'IfNotPresent'
           resources:
             requests:
-              cpu: '16'
+              cpu: '8'
               memory: 16Gi
             limits:
-              cpu: '16'
+              cpu: '8'
               memory: 16Gi
           # Mode: "repeat" downloads the same URL every request, "random"
           # appends a unique query string per request.
