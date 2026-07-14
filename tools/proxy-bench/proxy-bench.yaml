@@ -5,6 +5,8 @@ metadata:
   name: proxy-bench
 spec:
   backoffLimit: 0
+  parallelism: 1
+  completions: 1
   template:
     metadata:
       labels:
@@ -18,10 +20,10 @@ spec:
           imagePullPolicy: 'IfNotPresent'
           resources:
             requests:
-              cpu: '8'
+              cpu: '16'
               memory: 16Gi
             limits:
-              cpu: '8'
+              cpu: '16'
               memory: 16Gi
           # Mode: "repeat" downloads the same URL every request, "random"
           # appends a unique query string per request.
