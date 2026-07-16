@@ -10,7 +10,6 @@ RUN if [ -n "${TARGETOS:-}" ] && [ -n "${TARGETARCH:-}" ]; then \
     else \
       CGO_ENABLED=0 go install github.com/tsenart/vegeta/v12@latest; \
     fi
-    && if [ -f "/go/bin/${TARGETOS}_${TARGETARCH}/vegeta" ]; then mv "/go/bin/${TARGETOS}_${TARGETARCH}/vegeta" /go/bin/vegeta; fi
 
 FROM alpine:3.22
 
