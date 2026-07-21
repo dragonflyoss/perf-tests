@@ -20,7 +20,7 @@
 #   RANGE=0-1023 ./tools/proxy-bench/proxy-bench.sh random
 #   FILE_SIZE=$((1 << 30)) CHUNK_SIZE=$((1 << 20)) ./tools/proxy-bench/proxy-bench.sh sequential
 #   # RATE=0 means attack as fast as possible, concurrency ramps up to MAX_WORKERS.
-#   STREAMS=16 RATE=0 MAX_WORKERS=256 ./tools/proxy-bench/proxy-bench.sh sequential
+#   STREAMS=128 RATE=0 MAX_WORKERS=256 ./tools/proxy-bench/proxy-bench.sh sequential
 #
 # Install vegeta:
 #   go install github.com/tsenart/vegeta/v12@latest
@@ -51,7 +51,7 @@ FILE_SIZE="${FILE_SIZE:-$((1 << 30))}"   # 1GiB
 CHUNK_SIZE="${CHUNK_SIZE:-$((1 << 20))}" # 1MiB
 # sequential mode: number of passes interleaved round-robin in the target
 # stream, i.e. how many Dragonfly tasks are read concurrently.
-STREAMS="${STREAMS:-16}"
+STREAMS="${STREAMS:-128}"
 
 if [[ "${MODE}" != "repeat" && "${MODE}" != "random" && "${MODE}" != "sequential" ]]; then
     echo "unknown mode: ${MODE} (expected 'repeat', 'random' or 'sequential')" >&2
