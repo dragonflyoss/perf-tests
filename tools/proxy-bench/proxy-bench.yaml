@@ -16,7 +16,7 @@ spec:
       restartPolicy: Never
       containers:
         - name: proxy-bench
-          image: dragonflyoss/proxy-bench:v0.1.0
+          image: dragonflyoss/proxy-bench:v1.0.1
           imagePullPolicy: 'IfNotPresent'
           resources:
             requests:
@@ -27,8 +27,8 @@ spec:
               memory: 16Gi
           # Mode: "repeat" downloads the same URL every request, "random"
           # appends a unique query string per request, "sequential" reads the
-          # object head to tail in CHUNK_SIZE ranges with a unique query
-          # string per pass.
+          # object head to tail in CHUNK_SIZE ranges, cycling through a fixed
+          # pool of URL_COUNT unique query strings.
           args: ['repeat']
           env:
             - name: PROXY
