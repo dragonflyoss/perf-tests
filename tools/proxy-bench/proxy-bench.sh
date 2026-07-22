@@ -6,11 +6,13 @@
 #                Dragonfly task, so the P2P cache serves most of the traffic.
 #   random     - append a unique query string to every request, so every request
 #                maps to a distinct Dragonfly task and goes back-to-source.
-#   sequential - append a unique query string per pass, then read the object
-#                (FILE_SIZE bytes) from head to tail in CHUNK_SIZE ranged
-#                requests; once a pass completes, switch to a new query string,
-#                i.e. a new Dragonfly task. STREAMS passes are interleaved
-#                round-robin so several tasks stay in flight at once.
+#   sequential - pre-generate a fixed pool of URL_COUNT unique query strings
+#                (one Dragonfly task each), then read the object (FILE_SIZE
+#                bytes) from head to tail in CHUNK_SIZE ranged requests; once
+#                a pass completes, move on to the next URL in the pool, so the
+#                same URL_COUNT tasks are re-read repeatedly. STREAMS passes
+#                are interleaved round-robin so several tasks stay in flight
+#                at once.
 #
 # Usage:
 #   ./tools/proxy-bench/proxy-bench.sh repeat
@@ -52,6 +54,9 @@ CHUNK_SIZE="${CHUNK_SIZE:-$((1 << 20))}" # 1MiB
 # sequential mode: number of passes interleaved round-robin in the target
 # stream, i.e. how many Dragonfly tasks are read concurrently.
 STREAMS="${STREAMS:-128}"
+# sequential mode: size of the fixed URL pool, i.e. how many distinct
+# Dragonfly tasks are re-read repeatedly.
+URL_COUNT="${URL_COUNT:-32}"
 
 if [[ "${MODE}" != "repeat" && "${MODE}" != "random" && "${MODE}" != "sequential" ]]; then
     echo "unknown mode: ${MODE} (expected 'repeat', 'random' or 'sequential')" >&2
@@ -65,6 +70,11 @@ fi
 
 if ! [[ "${STREAMS}" =~ ^[1-9][0-9]*$ ]]; then
     echo "STREAMS must be a positive integer, got: ${STREAMS}" >&2
+    exit 1
+fi
+
+if ! [[ "${URL_COUNT}" =~ ^[1-9][0-9]*$ ]]; then
+    echo "URL_COUNT must be a positive integer, got: ${URL_COUNT}" >&2
     exit 1
 fi
 
@@ -100,19 +110,27 @@ targets() {
 
     local i=0
     if [[ "${MODE}" == "sequential" ]]; then
-        local -a urls offsets
+        local -a pool urls offsets idx
         local s end
+        # Fixed pool of URL_COUNT unique query strings, i.e. URL_COUNT
+        # Dragonfly tasks that are re-read repeatedly for the whole run.
+        for ((i = 0; i < URL_COUNT; i++)); do
+            pool[i]="${TARGET_URL}?r=${run_id}-${i}-${RANDOM}"
+        done
         # All streams start together at offset 0 and advance in lockstep, one
-        # chunk per round-robin turn. Every pass reads the object from 0 to
-        # EOF, and each pass boundary creates STREAMS new tasks at once.
+        # chunk per round-robin turn. Stream s starts on pool[s % URL_COUNT]
+        # and moves to the next pool entry after each complete pass, cycling
+        # through the same URL_COUNT URLs forever.
         for ((s = 0; s < STREAMS; s++)); do
-            offsets[s]="${FILE_SIZE}" # force a fresh query string on the first turn
+            idx[s]=$((s % URL_COUNT))
+            urls[s]="${pool[idx[s]]}"
+            offsets[s]=0
         done
         while true; do
             for ((s = 0; s < STREAMS; s++)); do
                 if ((offsets[s] >= FILE_SIZE)); then
-                    i=$((i + 1))
-                    urls[s]="${TARGET_URL}?r=${run_id}-${i}-${RANDOM}"
+                    idx[s]=$(((idx[s] + 1) % URL_COUNT))
+                    urls[s]="${pool[idx[s]]}"
                     offsets[s]=0
                 fi
                 end=$((offsets[s] + CHUNK_SIZE - 1))
@@ -137,7 +155,7 @@ targets() {
 
 echo "mode=${MODE} proxy=${PROXY} url=${TARGET_URL} rate=${RATE}/s duration=${DURATION} range=${RANGE:-none}"
 if [[ "${MODE}" == "sequential" ]]; then
-    echo "file_size=${FILE_SIZE} chunk_size=${CHUNK_SIZE} chunks_per_pass=$(((FILE_SIZE + CHUNK_SIZE - 1) / CHUNK_SIZE)) streams=${STREAMS}"
+    echo "file_size=${FILE_SIZE} chunk_size=${CHUNK_SIZE} chunks_per_pass=$(((FILE_SIZE + CHUNK_SIZE - 1) / CHUNK_SIZE)) streams=${STREAMS} url_count=${URL_COUNT}"
 fi
 
 targets | vegeta attack \
