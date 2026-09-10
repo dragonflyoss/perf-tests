@@ -18,6 +18,7 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/dragonflyoss/perf-tests/pkg/backend"
@@ -45,23 +46,6 @@ var fileBenchCmd = &cobra.Command{
 	},
 }
 
-// fileBenchCleanupCmd represents the cleanup command for the file benchmark.
-var fileBenchCleanupCmd = &cobra.Command{
-	Use:                "cleanup [flags]",
-	Short:              "A command line tool for cleaning up the cache of Dragonfly peers and seed peers",
-	Args:               cobra.NoArgs,
-	DisableAutoGenTag:  true,
-	SilenceUsage:       true,
-	FParseErrWhitelist: cobra.FParseErrWhitelist{UnknownFlags: true},
-	RunE: func(cmd *cobra.Command, args []string) error {
-		ctx, cancel := context.WithTimeout(context.Background(), cfg.Timeout)
-		defer cancel()
-
-		logrus.Debugf("cleaning up file benchmark in namespace %s", cfg.FileBench.Namespace)
-		return cleanupFileBench(ctx, cfg)
-	},
-}
-
 // init initializes file-bench command.
 func init() {
 	// Namespace is shared with the cleanup command.
@@ -70,7 +54,7 @@ func init() {
 
 	flags := fileBenchCmd.Flags()
 	flags.Uint32VarP(&cfg.FileBench.Peers, "peers", "p", cfg.FileBench.Peers, "Specify the number of peers to download on for the file benchmark, default is all peers")
-	flags.StringVar(&cfg.FileBench.File, "file", cfg.FileBench.File, "Specify the file to download for the file benchmark [1g, 2g, 4g, 10g, 20g], default is 1g")
+	flags.StringVar(&cfg.FileBench.File, "file", cfg.FileBench.File, "Specify the file to download for the file benchmark [1b, 1k, 1m, 4m, 10m, 1g, 2g, 4g, 10g, 20g, 30g], default is 1g")
 
 	if err := viper.BindPFlags(persistentFlags); err != nil {
 		panic(fmt.Errorf("bind cache file-bench persistent flags to viper: %w", err))
@@ -101,7 +85,29 @@ func runFileBench(ctx context.Context, cfg *config.Config) error {
 		return err
 	}
 
+	// Fail the run, and the Job in Kubernetes, when too many downloads failed.
+	if !stats.GetResult().Passed() {
+		return errors.New("file benchmark failed")
+	}
+
 	return nil
+}
+
+// fileBenchCleanupCmd represents the cleanup command for the file benchmark.
+var fileBenchCleanupCmd = &cobra.Command{
+	Use:                "cleanup [flags]",
+	Short:              "A command line tool for cleaning up the cache of Dragonfly peers and seed peers",
+	Args:               cobra.NoArgs,
+	DisableAutoGenTag:  true,
+	SilenceUsage:       true,
+	FParseErrWhitelist: cobra.FParseErrWhitelist{UnknownFlags: true},
+	RunE: func(cmd *cobra.Command, args []string) error {
+		ctx, cancel := context.WithTimeout(context.Background(), cfg.Timeout)
+		defer cancel()
+
+		logrus.Debugf("cleaning up file benchmark in namespace %s", cfg.FileBench.Namespace)
+		return cleanupFileBench(ctx, cfg)
+	},
 }
 
 // cleanupFileBench cleans up the cache of the peers and seed peers.

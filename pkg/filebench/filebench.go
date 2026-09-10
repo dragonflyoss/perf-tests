@@ -134,10 +134,10 @@ func (f *fileBench) Run(ctx context.Context) error {
 		traffic = traffic.Add(after[i].Sub(before[i]))
 	}
 
-	result := &Result{File: file, Downloads: downloads, Traffic: traffic}
+	result := &Result{File: file, URL: downloadURL.String(), Downloads: downloads, Traffic: traffic, Elapsed: time.Since(start)}
 	f.stats.SetResult(result)
 
-	fmt.Printf("Downloaded %s: %d/%d succeeded in %s\n", file, result.Succeeded(), len(downloads), time.Since(start).Round(time.Millisecond))
+	fmt.Printf("Downloaded %s: %d/%d succeeded in %s\n", file, result.Succeeded(), len(downloads), result.Elapsed.Round(time.Millisecond))
 	return nil
 }
 

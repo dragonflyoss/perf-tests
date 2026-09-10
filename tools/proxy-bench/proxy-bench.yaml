@@ -5,6 +5,7 @@ metadata:
   name: proxy-bench
 spec:
   backoffLimit: 0
+  ttlSecondsAfterFinished: 86400
   parallelism: 1
   completions: 1
   template:
@@ -14,10 +15,19 @@ spec:
         component: proxy-bench
     spec:
       restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: proxy-bench
-          image: dragonflyoss/proxy-bench:v1.0.1
+          image: dragonflyoss/proxy-bench:v2.0.0
           imagePullPolicy: 'IfNotPresent'
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ['ALL']
           resources:
             requests:
               cpu: '8'
@@ -25,22 +35,33 @@ spec:
             limits:
               cpu: '8'
               memory: 16Gi
-          # Mode: "repeat" downloads the same URL every request, "random"
-          # appends a unique query string per request, "sequential" reads the
-          # object head to tail in CHUNK_SIZE ranges, cycling through a fixed
-          # pool of URL_COUNT unique query strings.
-          args: ['repeat']
+          # The k6 end-of-test summary is printed to stdout, read it with
+          # kubectl logs job/proxy-bench. The Job fails when more than 1% of
+          # the requests failed, see the thresholds in proxy-bench.js.
           env:
-            - name: PROXY
+            # k6 reads the proxy from the standard HTTP_PROXY variable.
+            - name: HTTP_PROXY
               value: 'http://seed-client:4001'
+            # Mode: "repeat" downloads the same URL every request, "random"
+            # appends a unique query string per request, "sequential" reads the
+            # object head to tail in CHUNK_SIZE ranges, cycling through a fixed
+            # pool of URL_COUNT unique query strings.
+            - name: MODE
+              value: 'repeat'
             - name: RATE
               value: '100'
             - name: DURATION
               value: '60s'
-            # Use 'http://file-server/large' (1GiB) for the sequential mode.
+            # Object to download. Defaults to http://file-server/4m (4MiB),
+            # or http://file-server/1g (1GiB) in the sequential mode.
             # - name: TARGET_URL
-            # value: 'http://file-server/small'
+            # value: 'http://file-server/4m'
             # Byte range sent with every request, e.g. "0-1023". Empty means
             # full downloads.
             # - name: RANGE
             # value: ''
+            # CPUs the seed client had during the run (its cgroup limit, or what
+            # kubectl top / pidstat measured), adds cpu_cost in core/Gbps to the
+            # summary. Empty means no CPU cost line.
+            # - name: SEED_CLIENT_CPUS
+            # value: '4'

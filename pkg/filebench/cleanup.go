@@ -108,9 +108,10 @@ func (f *fileBench) getResource(ctx context.Context, resource string, label stri
 
 // disableStorageKeep sets storage.keep to false in the dfdaemon config of the ConfigMap.
 func (f *fileBench) disableStorageKeep(ctx context.Context, configMap string) error {
-	output, err := util.KubeCtlCommand(ctx, "get", "configmap", configMap, "-n", f.config.Namespace, "-o", "jsonpath={.data.dfdaemon\\.yaml}").CombinedOutput()
+	// Read stdout only, kubectl prints warnings to stderr.
+	output, err := util.KubeCtlCommand(ctx, "get", "configmap", configMap, "-n", f.config.Namespace, "-o", "jsonpath={.data.dfdaemon\\.yaml}").Output()
 	if err != nil {
-		logrus.Errorf("failed to get configmap: %v \nmessage: %s", err, string(output))
+		logrus.Errorf("failed to get configmap: %v \nmessage: %s", err, util.Stderr(err))
 		return err
 	}
 

@@ -17,15 +17,22 @@
 package filebench
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"os"
 	"slices"
+	"strings"
 	"time"
 
 	humanize "github.com/dustin/go-humanize"
-	"github.com/olekukonko/tablewriter"
 )
+
+// failedRateThreshold is the failed download rate that fails the benchmark, same as proxy-bench.
+const failedRateThreshold = 0.01
+
+// trendStats are the latency columns of the report, same as proxy-bench.
+var trendStats = []string{"min", "avg", "med", "p(90)", "p(95)", "p(99)", "max"}
 
 // Stats represents the statistics of the benchmark.
 type Stats interface {
@@ -35,7 +42,7 @@ type Stats interface {
 	// GetResult returns the result of the benchmark, nil before it ran.
 	GetResult() *Result
 
-	// PrettyPrint prints the statistics in a pretty format.
+	// PrettyPrint prints the report of the benchmark.
 	PrettyPrint() error
 }
 
@@ -47,14 +54,20 @@ type stats struct {
 
 // Result represents the downloads of the file on all peers.
 type Result struct {
-	// File is the file server path of the downloaded file.
+	// File is the downloaded file.
 	File string
+
+	// URL is the download URL.
+	URL string
 
 	// Downloads is the download of every peer.
 	Downloads []*Download
 
 	// Traffic is the traffic of the peers and seed peers during the benchmark.
 	Traffic Traffic
+
+	// Elapsed is the wall-clock time of the benchmark.
+	Elapsed time.Duration
 }
 
 // Download represents one dfget download on one peer.
@@ -84,32 +97,60 @@ func (s *stats) GetResult() *Result {
 	return s.result
 }
 
-// PrettyPrint prints the statistics in a pretty format.
+// PrettyPrint prints the report of the benchmark.
 func (s *stats) PrettyPrint() error {
-	table := tablewriter.NewWriter(os.Stdout)
-	table.Header("File", "Peers", "Success Rate", "Avg Cost", "P50 Cost", "P90 Cost", "P99 Cost", "Max Cost", "Back To Source Traffic", "Remote Peer Traffic", "Local Peer Traffic", "Back To Source Rate")
-
-	if result := s.result; result != nil {
-		costs := result.Costs()
-		if err := table.Append(
-			result.File,
-			fmt.Sprintf("%d", len(result.Downloads)),
-			fmt.Sprintf("%s (%d/%d)", formatRate(uint64(result.Succeeded()), uint64(len(result.Downloads))), result.Succeeded(), len(result.Downloads)),
-			formatDuration(average(costs)),
-			formatDuration(percentile(costs, 50)),
-			formatDuration(percentile(costs, 90)),
-			formatDuration(percentile(costs, 99)),
-			formatDuration(percentile(costs, 100)),
-			humanize.IBytes(result.Traffic.BackToSource),
-			humanize.IBytes(result.Traffic.RemotePeer),
-			humanize.IBytes(result.Traffic.LocalPeer),
-			formatRate(result.Traffic.BackToSource, result.Traffic.Total()),
-		); err != nil {
-			return err
-		}
+	result := s.result
+	if result == nil {
+		return errors.New("no result")
 	}
 
-	return table.Render()
+	costs := result.Costs()
+	total, succeeded := len(result.Downloads), result.Succeeded()
+	failed := total - succeeded
+	traffic := result.Traffic
+
+	latencies := make([]string, 0, len(trendStats))
+	for _, cost := range []time.Duration{
+		percentile(costs, 0), average(costs), percentile(costs, 50),
+		percentile(costs, 90), percentile(costs, 95), percentile(costs, 99), percentile(costs, 100),
+	} {
+		latencies = append(latencies, formatMilliseconds(cost))
+	}
+
+	var b strings.Builder
+	row := func(label string, text string) { fmt.Fprintf(&b, "  %-16s%s\n", label, text) }
+	cells := func(texts []string) string {
+		var line strings.Builder
+		for _, text := range texts {
+			fmt.Fprintf(&line, "%9s", text)
+		}
+
+		return line.String()
+	}
+
+	b.WriteString("\nfile-bench\n\n")
+	row("Run", fmt.Sprintf("%s on %d peers by dfget, %s", result.File, total, formatSeconds(result.Elapsed)))
+	row("Target", result.URL)
+	b.WriteString("\n")
+	row("Downloads", fmt.Sprintf("%d total, %d succeeded", total, succeeded))
+	row("Failed", fmt.Sprintf("%d of %d (%s)", failed, total, formatPercent(failed, total)))
+	b.WriteString("\n")
+	row("Latency (ms)", cells(trendStats))
+	row("  download", cells(latencies))
+	b.WriteString("\n")
+	row("Traffic", fmt.Sprintf("%s total, %s back-to-source, %s remote peer, %s local peer",
+		humanize.IBytes(traffic.Total()), humanize.IBytes(traffic.BackToSource), humanize.IBytes(traffic.RemotePeer), humanize.IBytes(traffic.LocalPeer)))
+	row("Back to source", formatPercent(traffic.BackToSource, traffic.Total()))
+	b.WriteString("\n")
+	if result.Passed() {
+		row("Result", fmt.Sprintf("PASSED, ✓ download failed rate<%.2f", failedRateThreshold))
+	} else {
+		row("Result", fmt.Sprintf("FAILED, ✗ download failed rate<%.2f", failedRateThreshold))
+	}
+	b.WriteString("\n")
+
+	_, err := fmt.Fprint(os.Stdout, b.String())
+	return err
 }
 
 // Succeeded returns the number of successful downloads.
@@ -137,6 +178,16 @@ func (r *Result) Costs() []time.Duration {
 	return costs
 }
 
+// Passed returns whether the failed download rate is below the threshold.
+func (r *Result) Passed() bool {
+	total := len(r.Downloads)
+	if total == 0 {
+		return false
+	}
+
+	return float64(total-r.Succeeded())/float64(total) < failedRateThreshold
+}
+
 // percentile returns the nearest-rank percentile of the sorted costs, zero if empty.
 func percentile(sorted []time.Duration, p float64) time.Duration {
 	if len(sorted) == 0 {
@@ -161,20 +212,24 @@ func average(costs []time.Duration) time.Duration {
 	return total / time.Duration(len(costs))
 }
 
-// formatDuration formats the duration to a string, "-" when there is no sample.
-func formatDuration(d time.Duration) string {
-	if d == 0 {
-		return "-"
-	}
-
-	ms := float64(d) / float64(time.Millisecond)
-	return fmt.Sprintf("%.2fms", ms)
+// formatMilliseconds formats the duration in milliseconds.
+func formatMilliseconds(d time.Duration) string {
+	return fmt.Sprintf("%.2f", float64(d)/float64(time.Millisecond))
 }
 
-// formatRate formats part of total as a percentage, "-" when total is zero.
-func formatRate(part, total uint64) string {
+// formatSeconds formats the duration in seconds, or minutes and seconds from two minutes on.
+func formatSeconds(d time.Duration) string {
+	if d < 2*time.Minute {
+		return fmt.Sprintf("%.1fs", d.Seconds())
+	}
+
+	return d.Round(time.Second).String()
+}
+
+// formatPercent formats part of total as a percentage, 0.00% if total is zero.
+func formatPercent[T int | uint64](part, total T) string {
 	if total == 0 {
-		return "-"
+		return "0.00%"
 	}
 
 	return fmt.Sprintf("%.2f%%", float64(part)/float64(total)*100)

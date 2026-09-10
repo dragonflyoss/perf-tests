@@ -61,7 +61,7 @@ type DragonflyConfig struct {
 	// Downloader is the downloader to use for the benchmark [dfget, proxy], default is dfget.
 	Downloader string `yaml:"downloader,omitempty" mapstructure:"downloader,omitempty"`
 
-	// FileSizeLevel is the file size level to use for the benchmark [nano, micro, small, medium, large, xlarge, xxlarge], default is "" to run all levels.
+	// FileSizeLevel is the file size level to use for the benchmark [1b, 1k, 1m, 10m, 1g, 10g, 30g], default is "" to run all levels.
 	FileSizeLevel string `yaml:"file_size_level,omitempty" mapstructure:"file_size_level,omitempty"`
 }
 
