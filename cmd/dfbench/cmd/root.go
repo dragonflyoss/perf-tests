@@ -32,11 +32,10 @@ var cfg = config.New()
 var rootCmd = &cobra.Command{
 	Use:                "dfbench",
 	Short:              "A command line tool for benchmarking Dragonfly",
-	Args:               cobra.ExactArgs(1),
 	DisableAutoGenTag:  true,
 	SilenceUsage:       true,
 	FParseErrWhitelist: cobra.FParseErrWhitelist{UnknownFlags: true},
-	RunE: func(cmd *cobra.Command, args []string) error {
+	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		logrus.Debug("dfbench is running")
 
 		// Set the configured log level
@@ -77,4 +76,5 @@ func init() {
 	// Add sub command.
 	rootCmd.AddCommand(dragonflyCmd)
 	rootCmd.AddCommand(nydusCmd)
+	rootCmd.AddCommand(imageBenchCmd)
 }

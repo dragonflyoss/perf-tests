@@ -34,6 +34,12 @@ docker-build-image-bench: docker-build-image-bench-v1-1gb-4 docker-build-image-b
 	@echo "Build image-bench images done."
 .PHONY: docker-build-image-bench
 
+# Build image-bench-runner image.
+docker-build-image-bench-runner:
+	@echo "Begin to use docker build image-bench-runner image."
+	docker buildx build --platform linux/amd64,linux/arm64 -t image-bench-runner:latest -f ./tools/image-bench/Dockerfile .
+.PHONY: docker-build-image-bench-runner
+
 # Push all image-bench images.
 docker-push-image-bench: docker-push-image-bench-v1-1gb-4 docker-push-image-bench-v1-2gb-8 docker-push-image-bench-v1-4gb-8 docker-push-image-bench-v1-10gb-10 docker-push-image-bench-v1-20gb-4
 	@echo "Push image-bench images done."
@@ -126,6 +132,7 @@ help:
 	@echo "make docker-build-image-bench-v1-4gb-8      build image-bench:v1-4gb-8 (4 GiB, 512 MiB x 8 layers)"
 	@echo "make docker-build-image-bench-v1-10gb-10    build image-bench:v1-10gb-10 (10 GiB, 1 GiB x 10 layers)"
 	@echo "make docker-build-image-bench-v1-20gb-4     build image-bench:v1-20gb-4 (20 GiB, 5 GiB x 4 layers)"
+	@echo "make docker-build-image-bench-runner        build image-bench-runner image"
 	@echo "make docker-push-image-bench                push all image-bench images"
 	@echo "make docker-push-image-bench-v1-1gb-4       push image-bench:v1-1gb-4"
 	@echo "make docker-push-image-bench-v1-2gb-8       push image-bench:v1-2gb-8"

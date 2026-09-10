@@ -18,6 +18,7 @@ package util
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os/exec"
 	"strings"
@@ -50,10 +51,15 @@ func (p *PodExec) Command(ctx context.Context, arg ...string) *exec.Cmd {
 
 // GetPods returns a list of pods.
 func GetPods(ctx context.Context, namespace string, label string) ([]string, error) {
-	cmd := KubeCtlCommand(ctx, "get", "pods", "-n", namespace, "-l", label, "-o", "jsonpath={.items[*].metadata.name}")
-	output, err := cmd.CombinedOutput()
+	return GetResourceNames(ctx, namespace, "pods", label)
+}
+
+// GetResourceNames returns the names of the resources matching the label.
+func GetResourceNames(ctx context.Context, namespace string, resource string, label string) ([]string, error) {
+	// Read stdout only, kubectl prints warnings to stderr.
+	output, err := KubeCtlCommand(ctx, "get", resource, "-n", namespace, "-l", label, "-o", "jsonpath={.items[*].metadata.name}").Output()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get pods: %w", err)
+		return nil, fmt.Errorf("failed to get %s: %w \nmessage: %s", resource, err, Stderr(err))
 	}
 
 	return strings.Fields(string(output)), nil
@@ -63,4 +69,14 @@ func GetPods(ctx context.Context, namespace string, label string) ([]string, err
 func KubeCtlCommand(ctx context.Context, arg ...string) *exec.Cmd {
 	logrus.Debug(fmt.Sprintf(`kubectl command: "kubectl" "%s"`, strings.Join(arg, `" "`)))
 	return exec.CommandContext(ctx, "kubectl", arg...)
+}
+
+// Stderr returns the stderr of a failed command run with Output, empty otherwise.
+func Stderr(err error) string {
+	var exitErr *exec.ExitError
+	if errors.As(err, &exitErr) {
+		return string(exitErr.Stderr)
+	}
+
+	return ""
 }

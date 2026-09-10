@@ -1,0 +1,68 @@
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: image-bench
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 86400
+  parallelism: 1
+  completions: 1
+  template:
+    metadata:
+      labels:
+        app: dragonfly
+        component: image-bench
+    spec:
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: image-bench
+          image: dragonflyoss/image-bench-runner:latest
+          imagePullPolicy: 'IfNotPresent'
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ['ALL']
+          resources:
+            requests:
+              cpu: '1'
+              memory: 1Gi
+            limits:
+              cpu: '2'
+              memory: 2Gi
+          # The image entrypoint is "dfbench image-bench". The report is printed
+          # to stdout, read it with kubectl logs job/image-bench. The Job fails
+          # when more than 1% of the pulls failed.
+          args:
+            - '--namespace=dragonfly-system'
+            # Image to pull, configure the containerd certs.d of the nodes so
+            # that its registry goes through the dfdaemon proxy. The tags are
+            # v1-1gb-4, v1-2gb-8, v1-4gb-8, v1-10gb-10 and v1-20gb-4.
+            - '--image=dragonflyoss/image-bench:v1-1gb-4'
+            # Number of peer nodes to pull on, 0 means every peer node.
+            - '--peers=0'
+            - '--timeout=2h'
+          env:
+            # kubectl reads the cluster credentials from the standard KUBECONFIG
+            # variable, the file comes from the image-bench-kubeconfig secret.
+            - name: KUBECONFIG
+              value: /etc/kubeconfig/config
+          volumeMounts:
+            - name: kubeconfig
+              mountPath: /etc/kubeconfig
+              readOnly: true
+            # kubectl cache, HOME is /tmp in the image.
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        # kubectl create secret generic image-bench-kubeconfig --from-file=config=$HOME/.kube/config
+        - name: kubeconfig
+          secret:
+            secretName: image-bench-kubeconfig
+        - name: tmp
+          emptyDir: {}

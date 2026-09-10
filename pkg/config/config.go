@@ -45,6 +45,9 @@ type Config struct {
 
 	// Nydus is the configuration for benchmarking nydus.
 	Nydus NydusConfig `yaml:"nydus,omitempty" mapstructure:"nydus,omitempty"`
+
+	// ImageBench is the configuration for benchmarking concurrent image pulls.
+	ImageBench ImageBenchConfig `yaml:"image_bench,omitempty" mapstructure:"image_bench,omitempty"`
 }
 
 // DragonflyConfig is the configuration for benchmarking dragonfly.
@@ -71,6 +74,24 @@ type NydusConfig struct {
 	Number uint32 `yaml:"number,omitempty" mapstructure:"number,omitempty"`
 }
 
+// ImageBenchConfig is the configuration for benchmarking concurrent image pulls.
+type ImageBenchConfig struct {
+	// Namespace is the namespace to use for the benchmark.
+	Namespace string `yaml:"namespace,omitempty" mapstructure:"namespace,omitempty"`
+
+	// Peers is the number of peer nodes to pull on, 0 means all peer nodes.
+	Peers uint32 `yaml:"peers,omitempty" mapstructure:"peers,omitempty"`
+
+	// Image is the image to pull.
+	Image string `yaml:"image,omitempty" mapstructure:"image,omitempty"`
+
+	// CleanupImage is the image of the cleanup pods, it must contain crictl.
+	CleanupImage string `yaml:"cleanup_image,omitempty" mapstructure:"cleanup_image,omitempty"`
+
+	// ContainerdSocket is the containerd socket path on the peer nodes.
+	ContainerdSocket string `yaml:"containerd_socket,omitempty" mapstructure:"containerd_socket,omitempty"`
+}
+
 // New bench configuration.
 func New() *Config {
 	return &Config{
@@ -86,6 +107,13 @@ func New() *Config {
 		Nydus: NydusConfig{
 			Number:    1,
 			Namespace: "nydus-snapshotter",
+		},
+		ImageBench: ImageBenchConfig{
+			Namespace:        "dragonfly-system",
+			Peers:            0,
+			Image:            "dragonflyoss/image-bench:v1-1gb-4",
+			CleanupImage:     "dragonflyoss/image-bench-runner:latest",
+			ContainerdSocket: "/run/containerd/containerd.sock",
 		},
 	}
 }
