@@ -52,12 +52,12 @@ func New(config *config.ImageBenchConfig, stats Stats) ImageBench {
 
 // Run pulls the image on all peer nodes at the same time.
 func (b *imageBench) Run(ctx context.Context) error {
-	peers, err := util.GetPeers(ctx, b.config.Namespace, b.config.PeerLabel, int(b.config.Peers))
+	peers, err := util.GetPeers(ctx, b.config.Namespace, b.config.PeerLabel, b.config.PeerContainer, int(b.config.Peers))
 	if err != nil {
 		return err
 	}
 
-	seeds, err := util.GetSeeds(ctx, b.config.Namespace, b.config.SeedPeerLabel)
+	seeds, err := util.GetSeeds(ctx, b.config.Namespace, b.config.SeedPeerLabel, b.config.SeedPeerContainer)
 	if err != nil {
 		return err
 	}

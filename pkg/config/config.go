@@ -88,11 +88,26 @@ type FileBenchConfig struct {
 	// SeedPeerLabel is the label selector of the seed peer pods.
 	SeedPeerLabel string `yaml:"seed_peer_label,omitempty" mapstructure:"seed_peer_label,omitempty"`
 
+	// PeerContainer is the dfdaemon container name of the peer pods.
+	PeerContainer string `yaml:"peer_container,omitempty" mapstructure:"peer_container,omitempty"`
+
+	// SeedPeerContainer is the dfdaemon container name of the seed peer pods.
+	SeedPeerContainer string `yaml:"seed_peer_container,omitempty" mapstructure:"seed_peer_container,omitempty"`
+
+	// PeerConfigMap is the name of the dfdaemon ConfigMap of the peers, found by PeerLabel when empty.
+	PeerConfigMap string `yaml:"peer_configmap,omitempty" mapstructure:"peer_configmap,omitempty"`
+
+	// SeedPeerConfigMap is the name of the dfdaemon ConfigMap of the seed peers, found by SeedPeerLabel when empty.
+	SeedPeerConfigMap string `yaml:"seed_peer_configmap,omitempty" mapstructure:"seed_peer_configmap,omitempty"`
+
 	// Peers is the number of peers to download on, 0 means all peers.
 	Peers uint32 `yaml:"peers,omitempty" mapstructure:"peers,omitempty"`
 
 	// File is the file server path to download.
 	File string `yaml:"file,omitempty" mapstructure:"file,omitempty"`
+
+	// FileServer is the base URL of the file server, http://file-server.<namespace>.svc when empty.
+	FileServer string `yaml:"file_server,omitempty" mapstructure:"file_server,omitempty"`
 
 	// MetricsPort is the metrics port of the dfdaemon to collect the traffic from.
 	MetricsPort uint32 `yaml:"metrics_port,omitempty" mapstructure:"metrics_port,omitempty"`
@@ -108,6 +123,18 @@ type ImageBenchConfig struct {
 
 	// SeedPeerLabel is the label selector of the seed peer pods.
 	SeedPeerLabel string `yaml:"seed_peer_label,omitempty" mapstructure:"seed_peer_label,omitempty"`
+
+	// PeerContainer is the dfdaemon container name of the peer pods.
+	PeerContainer string `yaml:"peer_container,omitempty" mapstructure:"peer_container,omitempty"`
+
+	// SeedPeerContainer is the dfdaemon container name of the seed peer pods.
+	SeedPeerContainer string `yaml:"seed_peer_container,omitempty" mapstructure:"seed_peer_container,omitempty"`
+
+	// PeerConfigMap is the name of the dfdaemon ConfigMap of the peers, found by PeerLabel when empty.
+	PeerConfigMap string `yaml:"peer_configmap,omitempty" mapstructure:"peer_configmap,omitempty"`
+
+	// SeedPeerConfigMap is the name of the dfdaemon ConfigMap of the seed peers, found by SeedPeerLabel when empty.
+	SeedPeerConfigMap string `yaml:"seed_peer_configmap,omitempty" mapstructure:"seed_peer_configmap,omitempty"`
 
 	// Peers is the number of peer nodes to pull on, 0 means all peer nodes.
 	Peers uint32 `yaml:"peers,omitempty" mapstructure:"peers,omitempty"`
@@ -142,22 +169,26 @@ func New() *Config {
 			Namespace: "nydus-snapshotter",
 		},
 		FileBench: FileBenchConfig{
-			Namespace:     "dragonfly-system",
-			PeerLabel:     "component=client",
-			SeedPeerLabel: "component=seed-client",
-			Peers:         0,
-			File:          "1g",
-			MetricsPort:   4002,
+			Namespace:         "dragonfly-system",
+			PeerLabel:         "component=client",
+			SeedPeerLabel:     "component=seed-client",
+			PeerContainer:     "client",
+			SeedPeerContainer: "seed-client",
+			Peers:             0,
+			File:              "1g",
+			MetricsPort:       4002,
 		},
 		ImageBench: ImageBenchConfig{
-			Namespace:        "dragonfly-system",
-			PeerLabel:        "component=client",
-			SeedPeerLabel:    "component=seed-client",
-			Peers:            0,
-			Image:            "dragonflyoss/image-bench:v1-1gb-4",
-			MetricsPort:      4002,
-			CleanupImage:     "dragonflyoss/image-bench:latest",
-			ContainerdSocket: "/run/containerd/containerd.sock",
+			Namespace:         "dragonfly-system",
+			PeerLabel:         "component=client",
+			SeedPeerLabel:     "component=seed-client",
+			PeerContainer:     "client",
+			SeedPeerContainer: "seed-client",
+			Peers:             0,
+			Image:             "dragonflyoss/image-bench:v1-1gb-4",
+			MetricsPort:       4002,
+			CleanupImage:      "dragonflyoss/image-bench:latest",
+			ContainerdSocket:  "/run/containerd/containerd.sock",
 		},
 	}
 }

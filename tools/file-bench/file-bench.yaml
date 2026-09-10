@@ -43,8 +43,13 @@ spec:
             # Label selectors of the peer and seed peer pods, kubectl -l syntax.
             - '--peer-label=component=client'
             - '--seed-peer-label=component=seed-client'
+            # Names of the dfdaemon container in the peer and seed peer pods.
+            - '--peer-container=client'
+            - '--seed-peer-container=seed-client'
             # File to download, one of 1b, 1k, 1m, 4m, 10m, 1g, 2g, 4g, 10g, 20g, 30g.
             - '--file=1g'
+            # Base URL of the file server, http://file-server.<namespace>.svc when not set.
+            # - '--file-server=http://file-server.dragonfly-system.svc'
             # Number of peers to download on, 0 means every peer pod.
             - '--peers=0'
             # Metrics port of the dfdaemon, the download traffic is read from it.

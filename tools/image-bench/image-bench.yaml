@@ -43,6 +43,9 @@ spec:
             # Label selectors of the peer and seed peer pods, kubectl -l syntax.
             - '--peer-label=component=client'
             - '--seed-peer-label=component=seed-client'
+            # Names of the dfdaemon container in the peer and seed peer pods.
+            - '--peer-container=client'
+            - '--seed-peer-container=seed-client'
             # Image to pull, configure the containerd certs.d of the nodes so
             # that its registry goes through the dfdaemon proxy. The tags are
             # v1-1gb-4, v1-2gb-8, v1-4gb-8, v1-10gb-10 and v1-20gb-4.

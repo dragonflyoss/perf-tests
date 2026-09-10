@@ -98,11 +98,17 @@ type FileServer interface {
 }
 
 type fileServer struct {
-	namespace string
+	baseURL string
 }
 
+// NewFileServer returns the file server deployed in the namespace, at http://file-server.<namespace>.svc.
 func NewFileServer(namespace string) FileServer {
-	return &fileServer{namespace}
+	return NewFileServerURL(fmt.Sprintf("http://file-server.%s.svc", namespace))
+}
+
+// NewFileServerURL returns the file server at the base URL.
+func NewFileServerURL(baseURL string) FileServer {
+	return &fileServer{baseURL}
 }
 
 func (f *fileServer) GetFileURL(fileSizeLevel FileSizeLevel, tag string) (*url.URL, error) {
@@ -110,9 +116,7 @@ func (f *fileServer) GetFileURL(fileSizeLevel FileSizeLevel, tag string) (*url.U
 }
 
 func (f *fileServer) GetURL(filePath string, tag string) (*url.URL, error) {
-	baseURL := fmt.Sprintf("http://file-server.%s.svc", f.namespace)
-
-	u, err := url.Parse(baseURL)
+	u, err := url.Parse(f.baseURL)
 	if err != nil {
 		return nil, err
 	}

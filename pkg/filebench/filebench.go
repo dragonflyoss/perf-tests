@@ -63,12 +63,12 @@ func New(config *config.FileBenchConfig, fileServer backend.FileServer, stats St
 
 // Run downloads the file on all peers at the same time.
 func (f *fileBench) Run(ctx context.Context) error {
-	peers, err := util.GetPeers(ctx, f.config.Namespace, f.config.PeerLabel, int(f.config.Peers))
+	peers, err := util.GetPeers(ctx, f.config.Namespace, f.config.PeerLabel, f.config.PeerContainer, int(f.config.Peers))
 	if err != nil {
 		return err
 	}
 
-	seeds, err := util.GetSeeds(ctx, f.config.Namespace, f.config.SeedPeerLabel)
+	seeds, err := util.GetSeeds(ctx, f.config.Namespace, f.config.SeedPeerLabel, f.config.SeedPeerContainer)
 	if err != nil {
 		return err
 	}
@@ -119,7 +119,9 @@ func (f *fileBench) Run(ctx context.Context) error {
 
 // Cleanup clears the cache of the peers and seed peers.
 func (f *fileBench) Cleanup(ctx context.Context) error {
-	return util.CleanupWorkloads(ctx, f.config.Namespace, f.config.PeerLabel, f.config.SeedPeerLabel)
+	peer := util.Workload{Label: f.config.PeerLabel, ConfigMap: f.config.PeerConfigMap}
+	seed := util.Workload{Label: f.config.SeedPeerLabel, ConfigMap: f.config.SeedPeerConfigMap}
+	return util.CleanupWorkloads(ctx, f.config.Namespace, peer, seed)
 }
 
 // downloadByDfget downloads the file on the peer by dfget and removes the output afterwards.

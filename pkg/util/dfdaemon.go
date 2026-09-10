@@ -28,11 +28,11 @@ import (
 )
 
 const (
-	// PeerContainer is the dfdaemon container name of the peer pods.
-	PeerContainer = "client"
+	// peerKind is the controller kind of the peers.
+	peerKind = "daemonset"
 
-	// SeedContainer is the dfdaemon container name of the seed peer pods.
-	SeedContainer = "seed-client"
+	// seedKind is the controller kind of the seed peers.
+	seedKind = "statefulset"
 
 	// dfdaemonConfigKey is the key of the dfdaemon config in the ConfigMap.
 	dfdaemonConfigKey = "dfdaemon.yaml"
@@ -50,18 +50,18 @@ type Peer struct {
 	Node string
 }
 
-// Workload represents a dfdaemon controller and its ConfigMap, selected by the same label.
+// Workload selects a dfdaemon controller and its ConfigMap.
 type Workload struct {
-	// Label is the label selector of the controller and its ConfigMap.
+	// Label is the label selector of the controller, and of the ConfigMap when ConfigMap is empty.
 	Label string
 
-	// Kind is the controller kind.
-	Kind string
+	// ConfigMap is the name of the ConfigMap, empty to find it by Label.
+	ConfigMap string
 }
 
 // GetPeers returns the peers matching the label to benchmark on, sorted by pod name and limited to n, 0 means all.
-func GetPeers(ctx context.Context, namespace string, label string, n int) ([]Peer, error) {
-	peers, err := getPeers(ctx, namespace, label, PeerContainer)
+func GetPeers(ctx context.Context, namespace string, label string, container string, n int) ([]Peer, error) {
+	peers, err := getPeers(ctx, namespace, label, container)
 	if err != nil {
 		return nil, err
 	}
@@ -81,8 +81,8 @@ func GetPeers(ctx context.Context, namespace string, label string, n int) ([]Pee
 }
 
 // GetSeeds returns the seed peers matching the label to collect metrics from.
-func GetSeeds(ctx context.Context, namespace string, label string) ([]Peer, error) {
-	seeds, err := getPeers(ctx, namespace, label, SeedContainer)
+func GetSeeds(ctx context.Context, namespace string, label string, container string) ([]Peer, error) {
+	seeds, err := getPeers(ctx, namespace, label, container)
 	if err != nil {
 		return nil, err
 	}
@@ -116,39 +116,40 @@ func getPeers(ctx context.Context, namespace string, label string, container str
 	return peers, nil
 }
 
-// CleanupWorkloads disables storage.keep of the peers and seed peers matching the labels
+// CleanupWorkloads disables storage.keep of the peer daemonset and the seed peer statefulset
 // and restarts them, so they start with an empty cache.
-func CleanupWorkloads(ctx context.Context, namespace string, peerLabel string, seedLabel string) error {
-	workloads := []Workload{
-		{Label: peerLabel, Kind: "daemonset"},
-		{Label: seedLabel, Kind: "statefulset"},
+func CleanupWorkloads(ctx context.Context, namespace string, peer Workload, seed Workload) error {
+	if err := cleanupWorkload(ctx, namespace, peerKind, peer); err != nil {
+		logrus.Errorf("failed to cleanup %s: %v", peerKind, err)
+		return err
 	}
 
-	for _, w := range workloads {
-		if err := cleanupWorkload(ctx, namespace, w); err != nil {
-			logrus.Errorf("failed to cleanup %s: %v", w.Kind, err)
-			return err
-		}
+	if err := cleanupWorkload(ctx, namespace, seedKind, seed); err != nil {
+		logrus.Errorf("failed to cleanup %s: %v", seedKind, err)
+		return err
 	}
 
 	return nil
 }
 
 // cleanupWorkload disables storage.keep in the ConfigMap of the workload and restarts its controller.
-func cleanupWorkload(ctx context.Context, namespace string, w Workload) error {
-	configMap, err := getResource(ctx, namespace, "configmap", w.Label)
-	if err != nil {
-		return err
+func cleanupWorkload(ctx context.Context, namespace string, kind string, w Workload) error {
+	configMap := w.ConfigMap
+	if configMap == "" {
+		var err error
+		if configMap, err = getResource(ctx, namespace, "configmap", w.Label); err != nil {
+			return err
+		}
 	}
 
-	controller, err := getResource(ctx, namespace, w.Kind, w.Label)
+	controller, err := getResource(ctx, namespace, kind, w.Label)
 	if err != nil {
 		return err
 	}
 
 	// Skip the workload if it is not deployed.
 	if configMap == "" || controller == "" {
-		logrus.Warnf("no %s found by %s", w.Kind, w.Label)
+		logrus.Warnf("no %s found by %s", kind, w.Label)
 		return nil
 	}
 
@@ -157,8 +158,8 @@ func cleanupWorkload(ctx context.Context, namespace string, w Workload) error {
 		return err
 	}
 
-	fmt.Printf("Restarting %s %s ...\n", w.Kind, controller)
-	if err := restartController(ctx, namespace, w.Kind, controller); err != nil {
+	fmt.Printf("Restarting %s %s ...\n", kind, controller)
+	if err := restartController(ctx, namespace, kind, controller); err != nil {
 		return err
 	}
 

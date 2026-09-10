@@ -55,9 +55,16 @@ func init() {
 	persistentFlags.StringVar(&cfg.FileBench.SeedPeerLabel, "seed-peer-label", cfg.FileBench.SeedPeerLabel, "Specify the label selector of the seed peer pods for the file benchmark, default is component=seed-client")
 
 	flags := fileBenchCmd.Flags()
+	flags.StringVar(&cfg.FileBench.PeerContainer, "peer-container", cfg.FileBench.PeerContainer, "Specify the dfdaemon container name of the peer pods for the file benchmark, default is client")
+	flags.StringVar(&cfg.FileBench.SeedPeerContainer, "seed-peer-container", cfg.FileBench.SeedPeerContainer, "Specify the dfdaemon container name of the seed peer pods for the file benchmark, default is seed-client")
 	flags.Uint32VarP(&cfg.FileBench.Peers, "peers", "p", cfg.FileBench.Peers, "Specify the number of peers to download on for the file benchmark, default is all peers")
 	flags.StringVar(&cfg.FileBench.File, "file", cfg.FileBench.File, "Specify the file to download for the file benchmark [1b, 1k, 1m, 4m, 10m, 1g, 2g, 4g, 10g, 20g, 30g], default is 1g")
+	flags.StringVar(&cfg.FileBench.FileServer, "file-server", cfg.FileBench.FileServer, "Specify the base URL of the file server for the file benchmark, default is http://file-server.<namespace>.svc")
 	flags.Uint32Var(&cfg.FileBench.MetricsPort, "metrics-port", cfg.FileBench.MetricsPort, "Specify the metrics port of the dfdaemon to collect the traffic from, default is 4002")
+
+	cleanupFlags := fileBenchCleanupCmd.Flags()
+	cleanupFlags.StringVar(&cfg.FileBench.PeerConfigMap, "peer-configmap", cfg.FileBench.PeerConfigMap, "Specify the dfdaemon configmap name of the peers to cleanup, default is found by the peer label")
+	cleanupFlags.StringVar(&cfg.FileBench.SeedPeerConfigMap, "seed-peer-configmap", cfg.FileBench.SeedPeerConfigMap, "Specify the dfdaemon configmap name of the seed peers to cleanup, default is found by the seed peer label")
 
 	if err := viper.BindPFlags(persistentFlags); err != nil {
 		panic(fmt.Errorf("bind cache file-bench persistent flags to viper: %w", err))
@@ -67,14 +74,27 @@ func init() {
 		panic(fmt.Errorf("bind cache file-bench flags to viper: %w", err))
 	}
 
+	if err := viper.BindPFlags(cleanupFlags); err != nil {
+		panic(fmt.Errorf("bind cache file-bench cleanup flags to viper: %w", err))
+	}
+
 	// Add sub command.
 	fileBenchCmd.AddCommand(fileBenchCleanupCmd)
+}
+
+// newFileServer returns the file server of the benchmark, deployed in its namespace by default.
+func newFileServer(cfg *config.FileBenchConfig) backend.FileServer {
+	if cfg.FileServer != "" {
+		return backend.NewFileServerURL(cfg.FileServer)
+	}
+
+	return backend.NewFileServer(cfg.Namespace)
 }
 
 // runFileBench runs the file benchmark.
 func runFileBench(ctx context.Context, cfg *config.Config) error {
 	stats := filebench.NewStats()
-	fileServer := backend.NewFileServer(cfg.FileBench.Namespace)
+	fileServer := newFileServer(&cfg.FileBench)
 	fileBench := filebench.New(&cfg.FileBench, fileServer, stats)
 
 	fmt.Printf("Running file benchmark for %s by DFGET ...\n", cfg.FileBench.File)
@@ -116,7 +136,7 @@ var fileBenchCleanupCmd = &cobra.Command{
 // cleanupFileBench cleans up the cache of the peers and seed peers.
 func cleanupFileBench(ctx context.Context, cfg *config.Config) error {
 	stats := filebench.NewStats()
-	fileServer := backend.NewFileServer(cfg.FileBench.Namespace)
+	fileServer := newFileServer(&cfg.FileBench)
 	fileBench := filebench.New(&cfg.FileBench, fileServer, stats)
 
 	fmt.Printf("Cleaning up peers and seed peers in %s ...\n", cfg.FileBench.Namespace)
