@@ -21,11 +21,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"os/exec"
 	"strings"
 
 	"github.com/sirupsen/logrus"
 )
+
+// remoteCommandWebsocketsEnv is the kubectl feature gate that streams exec over WebSockets, "false" selects SPDY.
+const remoteCommandWebsocketsEnv = "KUBECTL_REMOTE_COMMAND_WEBSOCKETS"
 
 // PodExec represents a pod exec information.
 type PodExec struct {
@@ -80,7 +84,23 @@ func getJSON(ctx context.Context, out any, resource string, args ...string) erro
 // KubeCtlCommand returns a kubectl command.
 func KubeCtlCommand(ctx context.Context, arg ...string) *exec.Cmd {
 	logrus.Debug(fmt.Sprintf(`kubectl command: "kubectl" "%s"`, strings.Join(arg, `" "`)))
-	return exec.CommandContext(ctx, "kubectl", arg...)
+	cmd := exec.CommandContext(ctx, "kubectl", arg...)
+	cmd.Env = kubectlEnv(os.Environ())
+	return cmd
+}
+
+// kubectlEnv streams kubectl exec over SPDY unless the environment chooses the protocol.
+// kubectl streams over WebSockets since 1.31, and before 1.34 its client races on short
+// commands, "Unknown stream id 1, discarding message" then "closed all streams", which
+// fails some of the concurrent execs of the benchmarks, see kubernetes/kubernetes#131189.
+func kubectlEnv(environ []string) []string {
+	for _, kv := range environ {
+		if strings.HasPrefix(kv, remoteCommandWebsocketsEnv+"=") {
+			return environ
+		}
+	}
+
+	return append(environ, remoteCommandWebsocketsEnv+"=false")
 }
 
 // Stderr returns the stderr of a failed command run with Output, empty otherwise.

@@ -80,6 +80,9 @@ dfbench image-bench cleanup --namespace dragonfly-system --image ghcr.io/dragonf
 ## Knobs
 
 All knobs are flags, set them in the Job `args` or on the command line.
+`dfbench` runs `kubectl exec` over SPDY, the WebSocket client of kubectl before 1.34 fails some concurrent
+execs with `Unknown stream id 1, discarding message`. Set `KUBECTL_REMOTE_COMMAND_WEBSOCKETS=true` to stream
+over WebSockets anyway.
 
 | Flag                    | Default                             | Description                                         |
 |-------------------------|-------------------------------------|-----------------------------------------------------|
