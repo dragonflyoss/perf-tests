@@ -10,10 +10,10 @@ spec:
   type: ClusterIP
   clusterIP: None
   ports:
-  - name: nginx
-    port: 80
-    protocol: TCP
-    targetPort: 80
+    - name: nginx
+      port: 80
+      protocol: TCP
+      targetPort: 80
 
 ---
 apiVersion: apps/v1
@@ -34,8 +34,15 @@ spec:
         component: file-server
     spec:
       containers:
-      - name: file-server
-        image: dragonflyoss/file-server:latest 
-        imagePullPolicy: "IfNotPresent"
-        ports:
-        - containerPort: 80
+        - name: file-server
+          image: dragonflyoss/file-server:latest
+          imagePullPolicy: 'IfNotPresent'
+          ports:
+            - containerPort: 80
+          resources:
+            requests:
+              cpu: '4'
+              memory: 8Gi
+            limits:
+              cpu: '4'
+              memory: 8Gi

@@ -86,7 +86,7 @@ func runFileBench(ctx context.Context, cfg *config.Config) error {
 	}
 
 	// Fail the run, and the Job in Kubernetes, when too many downloads failed.
-	if !stats.GetResult().Passed() {
+	if !stats.GetResult().Downloads.Passed() {
 		return errors.New("file benchmark failed")
 	}
 

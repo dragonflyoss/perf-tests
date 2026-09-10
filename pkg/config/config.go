@@ -48,6 +48,9 @@ type Config struct {
 
 	// FileBench is the configuration for benchmarking concurrent file downloads.
 	FileBench FileBenchConfig `yaml:"file_bench,omitempty" mapstructure:"file_bench,omitempty"`
+
+	// ImageBench is the configuration for benchmarking concurrent image pulls.
+	ImageBench ImageBenchConfig `yaml:"image_bench,omitempty" mapstructure:"image_bench,omitempty"`
 }
 
 // DragonflyConfig is the configuration for benchmarking dragonfly.
@@ -86,6 +89,24 @@ type FileBenchConfig struct {
 	File string `yaml:"file,omitempty" mapstructure:"file,omitempty"`
 }
 
+// ImageBenchConfig is the configuration for benchmarking concurrent image pulls.
+type ImageBenchConfig struct {
+	// Namespace is the namespace to use for the benchmark.
+	Namespace string `yaml:"namespace,omitempty" mapstructure:"namespace,omitempty"`
+
+	// Peers is the number of peer nodes to pull on, 0 means all peer nodes.
+	Peers uint32 `yaml:"peers,omitempty" mapstructure:"peers,omitempty"`
+
+	// Image is the image to pull.
+	Image string `yaml:"image,omitempty" mapstructure:"image,omitempty"`
+
+	// CleanupImage is the image of the cleanup pods, it must contain crictl.
+	CleanupImage string `yaml:"cleanup_image,omitempty" mapstructure:"cleanup_image,omitempty"`
+
+	// ContainerdSocket is the containerd socket path on the peer nodes.
+	ContainerdSocket string `yaml:"containerd_socket,omitempty" mapstructure:"containerd_socket,omitempty"`
+}
+
 // New bench configuration.
 func New() *Config {
 	return &Config{
@@ -106,6 +127,13 @@ func New() *Config {
 			Namespace: "dragonfly-system",
 			Peers:     0,
 			File:      "1g",
+		},
+		ImageBench: ImageBenchConfig{
+			Namespace:        "dragonfly-system",
+			Peers:            0,
+			Image:            "dragonflyoss/image-bench:v1-1gb-4",
+			CleanupImage:     "dragonflyoss/image-bench:latest",
+			ContainerdSocket: "/run/containerd/containerd.sock",
 		},
 	}
 }

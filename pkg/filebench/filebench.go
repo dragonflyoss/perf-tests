@@ -18,7 +18,6 @@ package filebench
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/url"
 	"path"
@@ -33,22 +32,8 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-const (
-	// OutputDir is the directory in the peer pods to write the downloaded files to.
-	OutputDir = "/tmp"
-
-	// peerLabel is the label selector of the peer pods.
-	peerLabel = "component=client"
-
-	// peerContainer is the dfdaemon container name of the peer pods.
-	peerContainer = "client"
-
-	// seedLabel is the label selector of the seed peer pods.
-	seedLabel = "component=seed-client"
-
-	// seedContainer is the dfdaemon container name of the seed peer pods.
-	seedContainer = "seed-client"
-)
+// OutputDir is the directory in the peer pods to write the downloaded files to.
+const OutputDir = "/tmp"
 
 // FileBench represents a benchmark runner for concurrent file downloads.
 type FileBench interface {
@@ -71,15 +56,6 @@ type fileBench struct {
 	stats Stats
 }
 
-// peer represents a dfdaemon container in a pod.
-type peer struct {
-	// pod is the name of the pod.
-	pod string
-
-	// container is the name of the dfdaemon container.
-	container string
-}
-
 // New creates a new benchmark runner for concurrent file downloads.
 func New(config *config.FileBenchConfig, fileServer backend.FileServer, stats Stats) FileBench {
 	return &fileBench{config, fileServer, stats}
@@ -87,12 +63,12 @@ func New(config *config.FileBenchConfig, fileServer backend.FileServer, stats St
 
 // Run downloads the file on all peers at the same time.
 func (f *fileBench) Run(ctx context.Context) error {
-	peers, err := f.getPeers(ctx)
+	peers, err := util.GetPeers(ctx, f.config.Namespace, int(f.config.Peers))
 	if err != nil {
 		return err
 	}
 
-	seeds, err := f.getSeeds(ctx)
+	seeds, err := util.GetSeeds(ctx, f.config.Namespace)
 	if err != nil {
 		return err
 	}
@@ -106,7 +82,7 @@ func (f *fileBench) Run(ctx context.Context) error {
 
 	// Seed peers serve the peers and may back to source, so their traffic counts too.
 	members := slices.Concat(peers, seeds)
-	before, err := collectTraffic(ctx, f.config.Namespace, members)
+	before, err := util.CollectTraffic(ctx, f.config.Namespace, members)
 	if err != nil {
 		logrus.Errorf("failed to collect client metrics: %v", err)
 		return err
@@ -114,7 +90,7 @@ func (f *fileBench) Run(ctx context.Context) error {
 
 	fmt.Printf("Downloading %s on %d peers ...\n", downloadURL, len(peers))
 	start := time.Now()
-	downloads := make([]*Download, len(peers))
+	downloads := make(util.Downloads, len(peers))
 	var wg sync.WaitGroup
 	for i, p := range peers {
 		wg.Go(func() {
@@ -123,13 +99,13 @@ func (f *fileBench) Run(ctx context.Context) error {
 	}
 	wg.Wait()
 
-	after, err := collectTraffic(ctx, f.config.Namespace, members)
+	after, err := util.CollectTraffic(ctx, f.config.Namespace, members)
 	if err != nil {
 		logrus.Errorf("failed to collect client metrics: %v", err)
 		return err
 	}
 
-	var traffic Traffic
+	var traffic util.Traffic
 	for i := range members {
 		traffic = traffic.Add(after[i].Sub(before[i]))
 	}
@@ -137,13 +113,18 @@ func (f *fileBench) Run(ctx context.Context) error {
 	result := &Result{File: file, URL: downloadURL.String(), Downloads: downloads, Traffic: traffic, Elapsed: time.Since(start)}
 	f.stats.SetResult(result)
 
-	fmt.Printf("Downloaded %s: %d/%d succeeded in %s\n", file, result.Succeeded(), len(downloads), result.Elapsed.Round(time.Millisecond))
+	fmt.Printf("Downloaded %s: %d/%d succeeded in %s\n", file, downloads.Succeeded(), len(downloads), result.Elapsed.Round(time.Millisecond))
 	return nil
 }
 
+// Cleanup clears the cache of the peers and seed peers.
+func (f *fileBench) Cleanup(ctx context.Context) error {
+	return util.CleanupWorkloads(ctx, f.config.Namespace)
+}
+
 // downloadByDfget downloads the file on the peer by dfget and removes the output afterwards.
-func (f *fileBench) downloadByDfget(ctx context.Context, p peer, downloadURL *url.URL, file string) *Download {
-	podExec := util.NewPodExec(f.config.Namespace, p.pod, p.container)
+func (f *fileBench) downloadByDfget(ctx context.Context, p util.Peer, downloadURL *url.URL, file string) *util.Download {
+	podExec := util.NewPodExec(f.config.Namespace, p.Pod, p.Container)
 	outputPath := path.Join(OutputDir, fmt.Sprintf("%s-%s-%s", path.Base(file), config.DownloaderDfget, uuid.New().String()))
 
 	start := time.Now()
@@ -155,58 +136,10 @@ func (f *fileBench) downloadByDfget(ctx context.Context, p peer, downloadURL *ur
 	}
 
 	if err != nil {
-		logrus.Errorf("failed to download file on %s: %v \nmessage: %s", p.pod, err, string(output))
-		return &Download{Peer: p.pod, Cost: cost, Err: err}
+		logrus.Errorf("failed to download file on %s: %v \nmessage: %s", p.Pod, err, string(output))
+		return &util.Download{Peer: p.Pod, Cost: cost, Err: err}
 	}
 
 	logrus.Debugf("dfget output: %s", string(output))
-	return &Download{Peer: p.pod, Cost: cost}
-}
-
-// getPeers returns the peers to download on, limited to the configured number.
-func (f *fileBench) getPeers(ctx context.Context) ([]peer, error) {
-	pods, err := util.GetPods(ctx, f.config.Namespace, peerLabel)
-	if err != nil {
-		logrus.Errorf("failed to get pods: %v", err)
-		return nil, err
-	}
-
-	if len(pods) == 0 {
-		logrus.Errorf("no client pod found")
-		return nil, errors.New("no client pod found")
-	}
-	slices.Sort(pods)
-
-	if n := int(f.config.Peers); n > len(pods) {
-		logrus.Warnf("only %d client pods found, less than the requested %d", len(pods), n)
-	} else if n > 0 {
-		pods = pods[:n]
-	}
-
-	return newPeers(pods, peerContainer), nil
-}
-
-// getSeeds returns the seed peers to collect metrics from.
-func (f *fileBench) getSeeds(ctx context.Context) ([]peer, error) {
-	pods, err := util.GetPods(ctx, f.config.Namespace, seedLabel)
-	if err != nil {
-		logrus.Errorf("failed to get pods: %v", err)
-		return nil, err
-	}
-
-	if len(pods) == 0 {
-		logrus.Warnf("no seed client pod found")
-	}
-
-	return newPeers(pods, seedContainer), nil
-}
-
-// newPeers pairs the pods with the dfdaemon container name.
-func newPeers(pods []string, container string) []peer {
-	peers := make([]peer, 0, len(pods))
-	for _, pod := range pods {
-		peers = append(peers, peer{pod: pod, container: container})
-	}
-
-	return peers
+	return &util.Download{Peer: p.Pod, Cost: cost}
 }

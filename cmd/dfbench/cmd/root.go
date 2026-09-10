@@ -77,4 +77,5 @@ func init() {
 	rootCmd.AddCommand(dragonflyCmd)
 	rootCmd.AddCommand(nydusCmd)
 	rootCmd.AddCommand(fileBenchCmd)
+	rootCmd.AddCommand(imageBenchCmd)
 }

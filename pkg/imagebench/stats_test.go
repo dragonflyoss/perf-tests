@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package filebench
+package imagebench
 
 import (
 	"testing"
@@ -34,14 +34,13 @@ func TestStats(t *testing.T) {
 	}
 
 	stats.SetResult(&Result{
-		File:      "1g",
-		URL:       "http://file-server.dragonfly-system.svc/1g",
-		Downloads: util.Downloads{{Peer: "client-1", Cost: time.Second}},
+		Image:     "dragonflyoss/image-bench:v1-1gb-4",
+		Downloads: util.Downloads{{Peer: "node-1", Cost: time.Second}},
 		Traffic:   util.Traffic{BackToSource: 1 << 30},
 		Elapsed:   2 * time.Second,
 	})
-	if got := stats.GetResult(); got == nil || got.File != "1g" {
-		t.Fatalf("GetResult() = %v, want the 1g result", got)
+	if got := stats.GetResult(); got == nil || got.Image != "dragonflyoss/image-bench:v1-1gb-4" {
+		t.Fatalf("GetResult() = %v, want the v1-1gb-4 result", got)
 	}
 
 	if err := stats.PrettyPrint(); err != nil {

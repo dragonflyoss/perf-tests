@@ -1,0 +1,72 @@
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: image-bench-cleanup
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 86400
+  parallelism: 1
+  completions: 1
+  template:
+    metadata:
+      labels:
+        app: dragonfly
+        component: image-bench-cleanup
+    spec:
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: image-bench-cleanup
+          image: dragonflyoss/image-bench:latest
+          imagePullPolicy: 'IfNotPresent'
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ['ALL']
+          resources:
+            requests:
+              cpu: '500m'
+              memory: 512Mi
+            limits:
+              cpu: '1'
+              memory: 1Gi
+          # The image entrypoint is "dfbench image-bench". cleanup deletes the
+          # pull pods, removes the image from containerd on the peer nodes with
+          # a privileged pod per node running crictl, disables storage.keep in
+          # the dfdaemon configmaps and restarts the peer daemonset and the
+          # seed peer statefulset, so they start with an empty cache. It waits
+          # for both rollouts to finish.
+          args:
+            - 'cleanup'
+            - '--namespace=dragonfly-system'
+            # Same image as the image-bench Job.
+            - '--image=dragonflyoss/image-bench:v1-1gb-4'
+            # Image of the cleanup pods, it must be pullable from the peer nodes.
+            - '--cleanup-image=dragonflyoss/image-bench:latest'
+            # Containerd socket of the peer nodes, e.g. /run/k3s/containerd/containerd.sock for k3s.
+            - '--containerd-socket=/run/containerd/containerd.sock'
+            - '--timeout=1h'
+          env:
+            # kubectl reads the cluster credentials from the standard KUBECONFIG
+            # variable, the file comes from the image-bench-kubeconfig secret.
+            - name: KUBECONFIG
+              value: /etc/kubeconfig/config
+          volumeMounts:
+            - name: kubeconfig
+              mountPath: /etc/kubeconfig
+              readOnly: true
+            # kubectl cache, HOME is /tmp in the image.
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        # kubectl create secret generic image-bench-kubeconfig --from-file=config=$HOME/.kube/config
+        - name: kubeconfig
+          secret:
+            secretName: image-bench-kubeconfig
+        - name: tmp
+          emptyDir: {}

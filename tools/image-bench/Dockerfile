@@ -13,11 +13,16 @@ RUN CGO_ENABLED=0 GOOS="${TARGETOS:-linux}" GOARCH="${TARGETARCH:-}" go build -o
 
 FROM alpine:3.22
 
-RUN apk add --no-cache kubectl
+ARG TARGETARCH
+ARG CRICTL_VERSION=v1.37.0
+
+RUN apk add --no-cache curl kubectl \
+    && curl -fsSL "https://github.com/kubernetes-sigs/cri-tools/releases/download/${CRICTL_VERSION}/crictl-${CRICTL_VERSION}-linux-${TARGETARCH:-amd64}.tar.gz" \
+    | tar -xz -C /usr/local/bin crictl
 
 COPY --from=builder /out/dfbench /usr/local/bin/dfbench
 
 USER 65534:65534
 ENV HOME=/tmp
 
-ENTRYPOINT ["/usr/local/bin/dfbench", "file-bench"]
+ENTRYPOINT ["/usr/local/bin/dfbench", "image-bench"]
