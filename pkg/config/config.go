@@ -45,6 +45,9 @@ type Config struct {
 
 	// Nydus is the configuration for benchmarking nydus.
 	Nydus NydusConfig `yaml:"nydus,omitempty" mapstructure:"nydus,omitempty"`
+
+	// FileBench is the configuration for benchmarking concurrent file downloads.
+	FileBench FileBenchConfig `yaml:"file_bench,omitempty" mapstructure:"file_bench,omitempty"`
 }
 
 // DragonflyConfig is the configuration for benchmarking dragonfly.
@@ -71,6 +74,18 @@ type NydusConfig struct {
 	Number uint32 `yaml:"number,omitempty" mapstructure:"number,omitempty"`
 }
 
+// FileBenchConfig is the configuration for benchmarking concurrent file downloads.
+type FileBenchConfig struct {
+	// Namespace is the namespace to use for the benchmark.
+	Namespace string `yaml:"namespace,omitempty" mapstructure:"namespace,omitempty"`
+
+	// Peers is the number of peers to download on, 0 means all peers.
+	Peers uint32 `yaml:"peers,omitempty" mapstructure:"peers,omitempty"`
+
+	// File is the file server path to download.
+	File string `yaml:"file,omitempty" mapstructure:"file,omitempty"`
+}
+
 // New bench configuration.
 func New() *Config {
 	return &Config{
@@ -86,6 +101,11 @@ func New() *Config {
 		Nydus: NydusConfig{
 			Number:    1,
 			Namespace: "nydus-snapshotter",
+		},
+		FileBench: FileBenchConfig{
+			Namespace: "dragonfly-system",
+			Peers:     0,
+			File:      "1g",
 		},
 	}
 }

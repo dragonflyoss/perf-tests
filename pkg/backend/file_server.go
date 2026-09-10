@@ -89,7 +89,11 @@ var FileSizeLevels = []FileSizeLevel{
 }
 
 type FileServer interface {
+	// GetFileURL returns the URL of the file by size level.
 	GetFileURL(FileSizeLevel, string) (*url.URL, error)
+
+	// GetURL returns the URL of the file by path.
+	GetURL(string, string) (*url.URL, error)
 }
 
 type fileServer struct {
@@ -101,13 +105,17 @@ func NewFileServer(namespace string) FileServer {
 }
 
 func (f *fileServer) GetFileURL(fileSizeLevel FileSizeLevel, tag string) (*url.URL, error) {
+	return f.GetURL(string(fileSizeLevel), tag)
+}
+
+func (f *fileServer) GetURL(filePath string, tag string) (*url.URL, error) {
 	baseURL := fmt.Sprintf("http://file-server.%s.svc", f.namespace)
 
 	u, err := url.Parse(baseURL)
 	if err != nil {
 		return nil, err
 	}
-	u.Path = path.Join(u.Path, string(fileSizeLevel))
+	u.Path = path.Join(u.Path, filePath)
 
 	// Add tag query parameter.
 	query := u.Query()

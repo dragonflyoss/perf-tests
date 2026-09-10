@@ -1,0 +1,121 @@
+/*
+ *     Copyright 2026 The Dragonfly Authors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package filebench
+
+import (
+	"errors"
+	"testing"
+	"time"
+)
+
+func TestResultSucceededAndCosts(t *testing.T) {
+	result := &Result{
+		File: "1g",
+		Downloads: []*Download{
+			{Peer: "client-2", Cost: 3 * time.Second},
+			{Peer: "client-1", Cost: time.Second},
+			{Peer: "client-3", Cost: 10 * time.Second, Err: errors.New("timeout")},
+		},
+	}
+
+	if got := result.Succeeded(); got != 2 {
+		t.Fatalf("Succeeded() = %d, want 2", got)
+	}
+
+	costs := result.Costs()
+	if len(costs) != 2 || costs[0] != time.Second || costs[1] != 3*time.Second {
+		t.Fatalf("Costs() = %v, want [1s 3s]", costs)
+	}
+}
+
+func TestPercentile(t *testing.T) {
+	costs := make([]time.Duration, 0, 100)
+	for i := 1; i <= 100; i++ {
+		costs = append(costs, time.Duration(i)*time.Millisecond)
+	}
+
+	tests := []struct {
+		name   string
+		sorted []time.Duration
+		p      float64
+		want   time.Duration
+	}{
+		{name: "p50", sorted: costs, p: 50, want: 50 * time.Millisecond},
+		{name: "p90", sorted: costs, p: 90, want: 90 * time.Millisecond},
+		{name: "p99", sorted: costs, p: 99, want: 99 * time.Millisecond},
+		{name: "max", sorted: costs, p: 100, want: 100 * time.Millisecond},
+		{name: "single sample", sorted: []time.Duration{7 * time.Second}, p: 99, want: 7 * time.Second},
+		{name: "no sample", sorted: nil, p: 50, want: 0},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := percentile(tt.sorted, tt.p); got != tt.want {
+				t.Fatalf("percentile() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestAverage(t *testing.T) {
+	if got := average([]time.Duration{time.Second, 3 * time.Second}); got != 2*time.Second {
+		t.Fatalf("average() = %v, want 2s", got)
+	}
+
+	if got := average(nil); got != 0 {
+		t.Fatalf("average(nil) = %v, want 0", got)
+	}
+}
+
+func TestFormat(t *testing.T) {
+	if got := formatDuration(0); got != "-" {
+		t.Errorf("formatDuration(0) = %q, want -", got)
+	}
+
+	if got := formatDuration(1500 * time.Millisecond); got != "1500.00ms" {
+		t.Errorf("formatDuration(1.5s) = %q, want 1500.00ms", got)
+	}
+
+	if got := formatRate(1, 0); got != "-" {
+		t.Errorf("formatRate(1, 0) = %q, want -", got)
+	}
+
+	if got := formatRate(1, 10); got != "10.00%" {
+		t.Errorf("formatRate(1, 10) = %q, want 10.00%%", got)
+	}
+}
+
+func TestStats(t *testing.T) {
+	stats := NewStats()
+	if stats.GetResult() != nil {
+		t.Fatal("GetResult() = non-nil before the benchmark ran, want nil")
+	}
+
+	// Printing with no result must render an empty table instead of failing.
+	if err := stats.PrettyPrint(); err != nil {
+		t.Fatalf("PrettyPrint() error = %v", err)
+	}
+
+	stats.SetResult(&Result{File: "1g", Downloads: []*Download{{Peer: "client-1", Cost: time.Second}}})
+	if got := stats.GetResult(); got == nil || got.File != "1g" {
+		t.Fatalf("GetResult() = %v, want the 1g result", got)
+	}
+
+	if err := stats.PrettyPrint(); err != nil {
+		t.Fatalf("PrettyPrint() error = %v", err)
+	}
+}

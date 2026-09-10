@@ -50,10 +50,15 @@ func (p *PodExec) Command(ctx context.Context, arg ...string) *exec.Cmd {
 
 // GetPods returns a list of pods.
 func GetPods(ctx context.Context, namespace string, label string) ([]string, error) {
-	cmd := KubeCtlCommand(ctx, "get", "pods", "-n", namespace, "-l", label, "-o", "jsonpath={.items[*].metadata.name}")
+	return GetResourceNames(ctx, namespace, "pods", label)
+}
+
+// GetResourceNames returns the names of the resources matching the label.
+func GetResourceNames(ctx context.Context, namespace string, resource string, label string) ([]string, error) {
+	cmd := KubeCtlCommand(ctx, "get", resource, "-n", namespace, "-l", label, "-o", "jsonpath={.items[*].metadata.name}")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get pods: %w", err)
+		return nil, fmt.Errorf("failed to get %s: %w \nmessage: %s", resource, err, string(output))
 	}
 
 	return strings.Fields(string(output)), nil

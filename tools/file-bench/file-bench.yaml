@@ -1,0 +1,100 @@
+---
+# No kubeconfig is needed inside the cluster: kubectl picks up the token of
+# this service account, which the Role below grants the permissions that
+# "dfbench file-bench" and "dfbench file-bench cleanup" need.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: file-bench
+  namespace: dragonfly-system
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: file-bench
+  namespace: dragonfly-system
+rules:
+  # file-bench lists the peer pods and runs dfget / curl in them.
+  - apiGroups: ['']
+    resources: ['pods']
+    verbs: ['get', 'list']
+  - apiGroups: ['']
+    resources: ['pods/exec']
+    verbs: ['create']
+  # cleanup patches storage.keep in the dfdaemon configmaps and restarts the
+  # peer daemonset and seed peer statefulset.
+  - apiGroups: ['']
+    resources: ['configmaps']
+    verbs: ['get', 'list', 'patch']
+  - apiGroups: ['apps']
+    resources: ['daemonsets', 'statefulsets']
+    verbs: ['get', 'list', 'watch', 'patch']
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: file-bench
+  namespace: dragonfly-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: file-bench
+subjects:
+  - kind: ServiceAccount
+    name: file-bench
+    namespace: dragonfly-system
+
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: file-bench
+  namespace: dragonfly-system
+spec:
+  backoffLimit: 0
+  parallelism: 1
+  completions: 1
+  template:
+    metadata:
+      labels:
+        app: dragonfly
+        component: file-bench
+    spec:
+      serviceAccountName: file-bench
+      restartPolicy: Never
+      containers:
+        - name: file-bench
+          image: dragonflyoss/file-bench:latest
+          imagePullPolicy: 'IfNotPresent'
+          resources:
+            requests:
+              cpu: '1'
+              memory: 1Gi
+            limits:
+              cpu: '2'
+              memory: 2Gi
+          # The image entrypoint is "dfbench file-bench". Every selected peer
+          # downloads the same file at the same time, --peers=0 selects every
+          # peer pod. Change --file to one of 1g, 2g, 4g, 10g or 20g, or put
+          # "cleanup" first to clear the peer caches instead.
+          args:
+            - '--namespace=dragonfly-system'
+            - '--file=1g'
+            - '--peers=0'
+            - '--timeout=2h'
+          # To target another cluster, store its kubeconfig in a secret
+          # (kubectl create secret generic file-bench-kubeconfig --from-file=config=$HOME/.kube/config),
+          # mount it and point KUBECONFIG at it. kubectl honors the variable directly.
+          # env:
+          #   - name: KUBECONFIG
+          #     value: /etc/kubeconfig/config
+          # volumeMounts:
+          #   - name: kubeconfig
+          #     mountPath: /etc/kubeconfig
+          #     readOnly: true
+      # volumes:
+      #   - name: kubeconfig
+      #     secret:
+      #       secretName: file-bench-kubeconfig

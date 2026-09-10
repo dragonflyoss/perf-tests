@@ -16,6 +16,14 @@ RUN dd if=/dev/zero of=/usr/share/nginx/html/xlarge bs=1G count=10
 
 RUN dd if=/dev/zero of=/usr/share/nginx/html/xxlarge bs=1G count=30
 
+RUN dd if=/dev/zero of=/usr/share/nginx/html/2g bs=1G count=2
+
+RUN dd if=/dev/zero of=/usr/share/nginx/html/4g bs=1G count=4
+
+RUN dd if=/dev/zero of=/usr/share/nginx/html/20g bs=1G count=20
+
+RUN ln -s large /usr/share/nginx/html/1g && ln -s xlarge /usr/share/nginx/html/10g
+
 EXPOSE 80
 
 CMD ["nginx", "-g", "daemon off;"]
