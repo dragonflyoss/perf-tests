@@ -1,6 +1,6 @@
 module github.com/dragonflyoss/perf-tests
 
-go 1.25.5
+go 1.25.0
 
 require (
 	github.com/dustin/go-humanize v1.0.1
