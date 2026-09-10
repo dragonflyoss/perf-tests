@@ -47,9 +47,11 @@ var imageBenchCmd = &cobra.Command{
 
 // init initializes image-bench command.
 func init() {
-	// Namespace, image and peers are shared with the cleanup command.
+	// Namespace, labels, image and peers are shared with the cleanup command.
 	persistentFlags := imageBenchCmd.PersistentFlags()
 	persistentFlags.StringVar(&cfg.ImageBench.Namespace, "namespace", cfg.ImageBench.Namespace, "Specify the namespace to use for the image benchmark")
+	persistentFlags.StringVar(&cfg.ImageBench.PeerLabel, "peer-label", cfg.ImageBench.PeerLabel, "Specify the label selector of the peer pods for the image benchmark, default is component=client")
+	persistentFlags.StringVar(&cfg.ImageBench.SeedPeerLabel, "seed-peer-label", cfg.ImageBench.SeedPeerLabel, "Specify the label selector of the seed peer pods for the image benchmark, default is component=seed-client")
 	persistentFlags.StringVar(&cfg.ImageBench.Image, "image", cfg.ImageBench.Image, "Specify the image to pull for the image benchmark, e.g. ghcr.io/dragonflyoss/image-bench:v1-10gb-10")
 	persistentFlags.Uint32VarP(&cfg.ImageBench.Peers, "peers", "p", cfg.ImageBench.Peers, "Specify the number of peer nodes to pull on for the image benchmark, default is all peer nodes")
 

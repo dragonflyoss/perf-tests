@@ -82,6 +82,12 @@ type FileBenchConfig struct {
 	// Namespace is the namespace to use for the benchmark.
 	Namespace string `yaml:"namespace,omitempty" mapstructure:"namespace,omitempty"`
 
+	// PeerLabel is the label selector of the peer pods.
+	PeerLabel string `yaml:"peer_label,omitempty" mapstructure:"peer_label,omitempty"`
+
+	// SeedPeerLabel is the label selector of the seed peer pods.
+	SeedPeerLabel string `yaml:"seed_peer_label,omitempty" mapstructure:"seed_peer_label,omitempty"`
+
 	// Peers is the number of peers to download on, 0 means all peers.
 	Peers uint32 `yaml:"peers,omitempty" mapstructure:"peers,omitempty"`
 
@@ -96,6 +102,12 @@ type FileBenchConfig struct {
 type ImageBenchConfig struct {
 	// Namespace is the namespace to use for the benchmark.
 	Namespace string `yaml:"namespace,omitempty" mapstructure:"namespace,omitempty"`
+
+	// PeerLabel is the label selector of the peer pods.
+	PeerLabel string `yaml:"peer_label,omitempty" mapstructure:"peer_label,omitempty"`
+
+	// SeedPeerLabel is the label selector of the seed peer pods.
+	SeedPeerLabel string `yaml:"seed_peer_label,omitempty" mapstructure:"seed_peer_label,omitempty"`
 
 	// Peers is the number of peer nodes to pull on, 0 means all peer nodes.
 	Peers uint32 `yaml:"peers,omitempty" mapstructure:"peers,omitempty"`
@@ -130,13 +142,17 @@ func New() *Config {
 			Namespace: "nydus-snapshotter",
 		},
 		FileBench: FileBenchConfig{
-			Namespace:   "dragonfly-system",
-			Peers:       0,
-			File:        "1g",
-			MetricsPort: 4002,
+			Namespace:     "dragonfly-system",
+			PeerLabel:     "component=client",
+			SeedPeerLabel: "component=seed-client",
+			Peers:         0,
+			File:          "1g",
+			MetricsPort:   4002,
 		},
 		ImageBench: ImageBenchConfig{
 			Namespace:        "dragonfly-system",
+			PeerLabel:        "component=client",
+			SeedPeerLabel:    "component=seed-client",
 			Peers:            0,
 			Image:            "dragonflyoss/image-bench:v1-1gb-4",
 			MetricsPort:      4002,

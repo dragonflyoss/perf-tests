@@ -84,6 +84,8 @@ All knobs are flags, set them in the Job `args` or on the command line.
 | Flag                  | Default                             | Description                                        |
 |-----------------------|-------------------------------------|----------------------------------------------------|
 | `--namespace`         | `dragonfly-system`                  | Namespace of the peers, the pods run in it too.    |
+| `--peer-label`        | `component=client`                  | Label selector of the peer pods, `kubectl -l`.     |
+| `--seed-peer-label`   | `component=seed-client`             | Label selector of the seed peer pods.              |
 | `--image`             | `dragonflyoss/image-bench:v1-1gb-4` | Image to pull, any registry.                       |
 | `--peers`             | `0`                                 | Peer pods to pull on, sorted by name, `0` is all.  |
 | `--metrics-port`      | `4002`                              | Metrics port of the dfdaemon to read the traffic.  |

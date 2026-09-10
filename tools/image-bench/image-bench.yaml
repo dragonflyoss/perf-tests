@@ -22,7 +22,7 @@ spec:
       containers:
         - name: image-bench
           image: dragonflyoss/image-bench:latest
-          imagePullPolicy: 'IfNotPresent'
+          imagePullPolicy: 'Always'
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
@@ -40,6 +40,9 @@ spec:
           # when more than 1% of the pulls failed.
           args:
             - '--namespace=dragonfly-system'
+            # Label selectors of the peer and seed peer pods, kubectl -l syntax.
+            - '--peer-label=component=client'
+            - '--seed-peer-label=component=seed-client'
             # Image to pull, configure the containerd certs.d of the nodes so
             # that its registry goes through the dfdaemon proxy. The tags are
             # v1-1gb-4, v1-2gb-8, v1-4gb-8, v1-10gb-10 and v1-20gb-4.

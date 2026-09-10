@@ -22,7 +22,7 @@ spec:
       containers:
         - name: proxy-bench
           image: dragonflyoss/proxy-bench:v2.0.0
-          imagePullPolicy: 'IfNotPresent'
+          imagePullPolicy: 'Always'
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true

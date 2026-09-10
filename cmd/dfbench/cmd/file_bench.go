@@ -48,9 +48,11 @@ var fileBenchCmd = &cobra.Command{
 
 // init initializes file-bench command.
 func init() {
-	// Namespace is shared with the cleanup command.
+	// Namespace and labels are shared with the cleanup command.
 	persistentFlags := fileBenchCmd.PersistentFlags()
 	persistentFlags.StringVar(&cfg.FileBench.Namespace, "namespace", cfg.FileBench.Namespace, "Specify the namespace to use for the file benchmark")
+	persistentFlags.StringVar(&cfg.FileBench.PeerLabel, "peer-label", cfg.FileBench.PeerLabel, "Specify the label selector of the peer pods for the file benchmark, default is component=client")
+	persistentFlags.StringVar(&cfg.FileBench.SeedPeerLabel, "seed-peer-label", cfg.FileBench.SeedPeerLabel, "Specify the label selector of the seed peer pods for the file benchmark, default is component=seed-client")
 
 	flags := fileBenchCmd.Flags()
 	flags.Uint32VarP(&cfg.FileBench.Peers, "peers", "p", cfg.FileBench.Peers, "Specify the number of peers to download on for the file benchmark, default is all peers")

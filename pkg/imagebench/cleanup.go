@@ -46,7 +46,7 @@ func (b *imageBench) Cleanup(ctx context.Context) error {
 		return err
 	}
 
-	return util.CleanupWorkloads(ctx, b.config.Namespace)
+	return util.CleanupWorkloads(ctx, b.config.Namespace, b.config.PeerLabel, b.config.SeedPeerLabel)
 }
 
 // removeImage deletes the pull pods left behind, then removes the image from
@@ -59,7 +59,7 @@ func (b *imageBench) removeImage(ctx context.Context) error {
 		return err
 	}
 
-	peers, err := util.GetPeers(ctx, b.config.Namespace, int(b.config.Peers))
+	peers, err := util.GetPeers(ctx, b.config.Namespace, b.config.PeerLabel, int(b.config.Peers))
 	if err != nil {
 		return err
 	}

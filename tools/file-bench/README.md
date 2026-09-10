@@ -68,15 +68,17 @@ dfbench file-bench cleanup --namespace dragonfly-system
 
 All knobs are flags, set them in the Job `args` or on the command line.
 
-| Flag             | Default            | Description                                                 |
-|------------------|--------------------|-------------------------------------------------------------|
-| `--namespace`    | `dragonfly-system` | Namespace of the peers and the file server.                 |
-| `--file`         | `1g`               | File server path to download, see the file server image.    |
-| `--peers`        | `0`                | Number of peers to download on, sorted by name, `0` is all. |
-| `--metrics-port` | `4002`             | Metrics port of the dfdaemon to read the traffic.           |
-| `--timeout`      | `30m`              | Timeout of the whole run, raise it for large files.         |
-| `--kubeconfig`   | none               | Kubeconfig to use, defaults to `$KUBECONFIG` like kubectl.  |
-| `--log-level`    | `info`             | `debug` prints every `kubectl` command.                     |
+| Flag                | Default                 | Description                                                 |
+|---------------------|-------------------------|-------------------------------------------------------------|
+| `--namespace`       | `dragonfly-system`      | Namespace of the peers and the file server.                 |
+| `--peer-label`      | `component=client`      | Label selector of the peer pods, `kubectl -l` syntax.       |
+| `--seed-peer-label` | `component=seed-client` | Label selector of the seed peer pods.                       |
+| `--file`            | `1g`                    | File server path to download, see the file server image.    |
+| `--peers`           | `0`                     | Number of peers to download on, sorted by name, `0` is all. |
+| `--metrics-port`    | `4002`                  | Metrics port of the dfdaemon to read the traffic.           |
+| `--timeout`         | `30m`                   | Timeout of the whole run, raise it for large files.         |
+| `--kubeconfig`      | none                    | Kubeconfig to use, defaults to `$KUBECONFIG` like kubectl.  |
+| `--log-level`       | `info`                  | `debug` prints every `kubectl` command.                     |
 
 ## Reading the report
 

@@ -19,7 +19,6 @@ package util
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"slices"
 	"strings"
@@ -29,14 +28,8 @@ import (
 )
 
 const (
-	// PeerLabel is the label selector of the peer pods.
-	PeerLabel = "component=client"
-
 	// PeerContainer is the dfdaemon container name of the peer pods.
 	PeerContainer = "client"
-
-	// SeedLabel is the label selector of the seed peer pods.
-	SeedLabel = "component=seed-client"
 
 	// SeedContainer is the dfdaemon container name of the seed peer pods.
 	SeedContainer = "seed-client"
@@ -66,22 +59,16 @@ type Workload struct {
 	Kind string
 }
 
-// Workloads are the dfdaemon workloads cleaned up by CleanupWorkloads.
-var Workloads = []Workload{
-	{Label: PeerLabel, Kind: "daemonset"},
-	{Label: SeedLabel, Kind: "statefulset"},
-}
-
-// GetPeers returns the peers to benchmark on, sorted by pod name and limited to n, 0 means all.
-func GetPeers(ctx context.Context, namespace string, n int) ([]Peer, error) {
-	peers, err := getPeers(ctx, namespace, PeerLabel, PeerContainer)
+// GetPeers returns the peers matching the label to benchmark on, sorted by pod name and limited to n, 0 means all.
+func GetPeers(ctx context.Context, namespace string, label string, n int) ([]Peer, error) {
+	peers, err := getPeers(ctx, namespace, label, PeerContainer)
 	if err != nil {
 		return nil, err
 	}
 
 	if len(peers) == 0 {
-		logrus.Errorf("no client pod found")
-		return nil, errors.New("no client pod found")
+		logrus.Errorf("no client pod found by %s", label)
+		return nil, fmt.Errorf("no client pod found by %s", label)
 	}
 
 	if n > len(peers) {
@@ -93,15 +80,15 @@ func GetPeers(ctx context.Context, namespace string, n int) ([]Peer, error) {
 	return peers, nil
 }
 
-// GetSeeds returns the seed peers to collect metrics from.
-func GetSeeds(ctx context.Context, namespace string) ([]Peer, error) {
-	seeds, err := getPeers(ctx, namespace, SeedLabel, SeedContainer)
+// GetSeeds returns the seed peers matching the label to collect metrics from.
+func GetSeeds(ctx context.Context, namespace string, label string) ([]Peer, error) {
+	seeds, err := getPeers(ctx, namespace, label, SeedContainer)
 	if err != nil {
 		return nil, err
 	}
 
 	if len(seeds) == 0 {
-		logrus.Warnf("no seed client pod found")
+		logrus.Warnf("no seed client pod found by %s", label)
 	}
 
 	return seeds, nil
@@ -129,10 +116,15 @@ func getPeers(ctx context.Context, namespace string, label string, container str
 	return peers, nil
 }
 
-// CleanupWorkloads disables storage.keep of the peers and seed peers and restarts them,
-// so they start with an empty cache.
-func CleanupWorkloads(ctx context.Context, namespace string) error {
-	for _, w := range Workloads {
+// CleanupWorkloads disables storage.keep of the peers and seed peers matching the labels
+// and restarts them, so they start with an empty cache.
+func CleanupWorkloads(ctx context.Context, namespace string, peerLabel string, seedLabel string) error {
+	workloads := []Workload{
+		{Label: peerLabel, Kind: "daemonset"},
+		{Label: seedLabel, Kind: "statefulset"},
+	}
+
+	for _, w := range workloads {
 		if err := cleanupWorkload(ctx, namespace, w); err != nil {
 			logrus.Errorf("failed to cleanup %s: %v", w.Kind, err)
 			return err

@@ -22,7 +22,7 @@ spec:
       containers:
         - name: image-bench-cleanup
           image: dragonflyoss/image-bench:latest
-          imagePullPolicy: 'IfNotPresent'
+          imagePullPolicy: 'Always'
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
@@ -44,6 +44,9 @@ spec:
           args:
             - 'cleanup'
             - '--namespace=dragonfly-system'
+            # Same labels as the image-bench Job.
+            - '--peer-label=component=client'
+            - '--seed-peer-label=component=seed-client'
             # Same image as the image-bench Job.
             - '--image=dragonflyoss/image-bench:v1-1gb-4'
             # Image of the cleanup pods, it must be pullable from the peer nodes.
