@@ -34,7 +34,7 @@
 //
 // Knobs (defaults in parentheses):
 //   MODE              repeat | random | sequential (repeat)
-//   TARGET_URL        object to download (http://file-server/small, sequential: http://file-server/large)
+//   TARGET_URL        object to download (http://file-server/4m, sequential: http://file-server/1g)
 //   RATE              requests per second, 0 switches to the constant-vus executor (100)
 //   VUS               max concurrent requests, i.e. k6 virtual users (64)
 //   DURATION          test duration (60s)
@@ -68,10 +68,10 @@ function envInt(name, def, min) {
   return Number(raw);
 }
 
-// sequential walks FILE_SIZE bytes, so it defaults to the 1GiB object (/large,
-// see tools/file-server/Dockerfile); the other modes default to the 1MiB /small.
+// sequential walks FILE_SIZE bytes, so it defaults to the 1GiB object (/1g,
+// see tools/file-server/Dockerfile); the other modes default to the 4MiB /4m.
 const TARGET_URL =
-  __ENV.TARGET_URL || (MODE === 'sequential' ? 'http://file-server/large' : 'http://file-server/small');
+  __ENV.TARGET_URL || (MODE === 'sequential' ? 'http://file-server/1g' : 'http://file-server/4m');
 const RATE = envInt('RATE', 100, 0);
 const VUS = envInt('VUS', 64, 1);
 const DURATION = __ENV.DURATION || '60s';

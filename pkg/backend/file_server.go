@@ -24,24 +24,25 @@ import (
 	"github.com/google/uuid"
 )
 
+// FileSizeLevel is the file served by the file server, named by size.
 type FileSizeLevel string
 
 func (f FileSizeLevel) String() string {
 	switch f {
-	case FileSizeLevelNano:
-		return "Nano(1B)"
-	case FileSizeLevelMicro:
-		return "Micro(1KB)"
-	case FileSizeLevelSmall:
-		return "Small(1MB)"
-	case FileSizeLevelMedium:
-		return "Medium(10MB)"
-	case FileSizeLevelLarge:
-		return "Large(1GB)"
-	case FileSizeLevelXLarge:
-		return "XLarge(10GB)"
-	case FileSizeLevelXXLarge:
-		return "XXLarge(30GB)"
+	case FileSizeLevel1B:
+		return "1B"
+	case FileSizeLevel1K:
+		return "1KiB"
+	case FileSizeLevel1M:
+		return "1MiB"
+	case FileSizeLevel10M:
+		return "10MiB"
+	case FileSizeLevel1G:
+		return "1GiB"
+	case FileSizeLevel10G:
+		return "10GiB"
+	case FileSizeLevel30G:
+		return "30GiB"
 	default:
 		return "Unknow"
 	}
@@ -49,19 +50,19 @@ func (f FileSizeLevel) String() string {
 
 func (f FileSizeLevel) TaskSizeLevel() string {
 	switch f {
-	case FileSizeLevelNano:
+	case FileSizeLevel1B:
 		return "1"
-	case FileSizeLevelMicro:
+	case FileSizeLevel1K:
 		return "1"
-	case FileSizeLevelSmall:
+	case FileSizeLevel1M:
 		return "2"
-	case FileSizeLevelMedium:
+	case FileSizeLevel10M:
 		return "4"
-	case FileSizeLevelLarge:
+	case FileSizeLevel1G:
 		return "11"
-	case FileSizeLevelXLarge:
+	case FileSizeLevel10G:
 		return "13"
-	case FileSizeLevelXXLarge:
+	case FileSizeLevel30G:
 		return "14"
 	default:
 		return "unknown"
@@ -69,27 +70,31 @@ func (f FileSizeLevel) TaskSizeLevel() string {
 }
 
 const (
-	FileSizeLevelNano    FileSizeLevel = "nano"
-	FileSizeLevelMicro   FileSizeLevel = "micro"
-	FileSizeLevelSmall   FileSizeLevel = "small"
-	FileSizeLevelMedium  FileSizeLevel = "medium"
-	FileSizeLevelLarge   FileSizeLevel = "large"
-	FileSizeLevelXLarge  FileSizeLevel = "xlarge"
-	FileSizeLevelXXLarge FileSizeLevel = "xxlarge"
+	FileSizeLevel1B  FileSizeLevel = "1b"
+	FileSizeLevel1K  FileSizeLevel = "1k"
+	FileSizeLevel1M  FileSizeLevel = "1m"
+	FileSizeLevel10M FileSizeLevel = "10m"
+	FileSizeLevel1G  FileSizeLevel = "1g"
+	FileSizeLevel10G FileSizeLevel = "10g"
+	FileSizeLevel30G FileSizeLevel = "30g"
 )
 
 var FileSizeLevels = []FileSizeLevel{
-	FileSizeLevelNano,
-	FileSizeLevelMicro,
-	FileSizeLevelSmall,
-	FileSizeLevelMedium,
-	FileSizeLevelLarge,
-	FileSizeLevelXLarge,
-	FileSizeLevelXXLarge,
+	FileSizeLevel1B,
+	FileSizeLevel1K,
+	FileSizeLevel1M,
+	FileSizeLevel10M,
+	FileSizeLevel1G,
+	FileSizeLevel10G,
+	FileSizeLevel30G,
 }
 
 type FileServer interface {
+	// GetFileURL returns the URL of the file by size level.
 	GetFileURL(FileSizeLevel, string) (*url.URL, error)
+
+	// GetURL returns the URL of the file by path.
+	GetURL(string, string) (*url.URL, error)
 }
 
 type fileServer struct {
@@ -101,13 +106,17 @@ func NewFileServer(namespace string) FileServer {
 }
 
 func (f *fileServer) GetFileURL(fileSizeLevel FileSizeLevel, tag string) (*url.URL, error) {
+	return f.GetURL(string(fileSizeLevel), tag)
+}
+
+func (f *fileServer) GetURL(filePath string, tag string) (*url.URL, error) {
 	baseURL := fmt.Sprintf("http://file-server.%s.svc", f.namespace)
 
 	u, err := url.Parse(baseURL)
 	if err != nil {
 		return nil, err
 	}
-	u.Path = path.Join(u.Path, string(fileSizeLevel))
+	u.Path = path.Join(u.Path, filePath)
 
 	// Add tag query parameter.
 	query := u.Query()

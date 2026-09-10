@@ -1,0 +1,66 @@
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: file-bench
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 86400
+  parallelism: 1
+  completions: 1
+  template:
+    metadata:
+      labels:
+        app: dragonfly
+        component: file-bench
+    spec:
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: file-bench
+          image: dragonflyoss/file-bench:latest
+          imagePullPolicy: 'IfNotPresent'
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ['ALL']
+          resources:
+            requests:
+              cpu: '1'
+              memory: 1Gi
+            limits:
+              cpu: '2'
+              memory: 2Gi
+          # The image entrypoint is "dfbench file-bench". The report is printed
+          # to stdout, read it with kubectl logs job/file-bench. The Job fails
+          # when more than 1% of the downloads failed.
+          args:
+            - '--namespace=dragonfly-system'
+            # File to download, one of 1b, 1k, 1m, 4m, 10m, 1g, 2g, 4g, 10g, 20g, 30g.
+            - '--file=1g'
+            # Number of peers to download on, 0 means every peer pod.
+            - '--peers=0'
+            - '--timeout=2h'
+          env:
+            # kubectl reads the cluster credentials from the standard KUBECONFIG
+            # variable, the file comes from the file-bench-kubeconfig secret.
+            - name: KUBECONFIG
+              value: /etc/kubeconfig/config
+          volumeMounts:
+            - name: kubeconfig
+              mountPath: /etc/kubeconfig
+              readOnly: true
+            # kubectl cache, HOME is /tmp in the image.
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        # kubectl create secret generic file-bench-kubeconfig --from-file=config=$HOME/.kube/config
+        - name: kubeconfig
+          secret:
+            secretName: file-bench-kubeconfig
+        - name: tmp
+          emptyDir: {}

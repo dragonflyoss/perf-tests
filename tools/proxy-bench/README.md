@@ -64,7 +64,7 @@ All knobs are environment variables, set them in the Job `env` or with `k6 run -
 |--------------------|-------------------------------|---------------------------------------------------|
 | `HTTP_PROXY`       | none                          | Proxy to send requests through.                   |
 | `MODE`             | `repeat`                      | `repeat`, `random` or `sequential`.               |
-| `TARGET_URL`       | `http://file-server/small` \* | Object to download.                               |
+| `TARGET_URL`       | `http://file-server/4m` \*    | Object to download.                               |
 | `RATE`             | `100`                         | Requests per second, `0` runs `VUS` back-to-back. |
 | `VUS`              | `64`                          | Max concurrent requests.                          |
 | `DURATION`         | `60s`                         | Test duration.                                    |
@@ -76,7 +76,7 @@ All knobs are environment variables, set them in the Job `env` or with `k6 run -
 | `URL_COUNT`        | `32`                          | sequential: number of tasks in the pool.          |
 | `SEED_CLIENT_CPUS` | off                           | CPUs of the seed client, prints `cpu_cost`.       |
 
-\* `http://file-server/large` in the sequential mode.
+\* `http://file-server/1g` in the sequential mode.
 
 ## Reading the report
 
@@ -86,7 +86,7 @@ k6 prints a short report instead of its default summary:
 proxy-bench
 
   Run           sequential via http://seed-client:4001, 60.0s
-  Target        http://file-server/large
+  Target        http://file-server/1g
   Load          256 VUs back-to-back, constant-vus
   Sequential    1 GiB in 4 MiB chunks, 256 per pass, 128 streams over 32 URLs
 

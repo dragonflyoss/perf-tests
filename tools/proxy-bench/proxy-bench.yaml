@@ -52,10 +52,10 @@ spec:
               value: '100'
             - name: DURATION
               value: '60s'
-            # Object to download. Defaults to http://file-server/small (1MiB),
-            # or http://file-server/large (1GiB) in the sequential mode.
+            # Object to download. Defaults to http://file-server/4m (4MiB),
+            # or http://file-server/1g (1GiB) in the sequential mode.
             # - name: TARGET_URL
-            # value: 'http://file-server/small'
+            # value: 'http://file-server/4m'
             # Byte range sent with every request, e.g. "0-1023". Empty means
             # full downloads.
             # - name: RANGE

@@ -29,6 +29,12 @@ docker-build-proxy-bench:
 	docker buildx build --platform linux/amd64,linux/arm64 -t proxy-bench:latest -f ./tools/proxy-bench/Dockerfile .
 .PHONY: docker-build-proxy-bench
 
+# Build file-bench image.
+docker-build-file-bench:
+	@echo "Begin to use docker build file-bench image."
+	docker buildx build --platform linux/amd64,linux/arm64 -t file-bench:latest -f ./tools/file-bench/Dockerfile .
+.PHONY: docker-build-file-bench
+
 # Build all image-bench images.
 docker-build-image-bench: docker-build-image-bench-v1-1gb-4 docker-build-image-bench-v1-2gb-8 docker-build-image-bench-v1-4gb-8 docker-build-image-bench-v1-10gb-10 docker-build-image-bench-v1-20gb-4
 	@echo "Build image-bench images done."
@@ -120,6 +126,7 @@ clean:
 help: 
 	@echo "make docker-build-file-server               build file-server image"
 	@echo "make docker-build-proxy-bench               build proxy-bench image"
+	@echo "make docker-build-file-bench                build file-bench image"
 	@echo "make docker-build-image-bench               build all image-bench images"
 	@echo "make docker-build-image-bench-v1-1gb-4      build image-bench:v1-1gb-4 (1 GiB, 256 MiB x 4 layers)"
 	@echo "make docker-build-image-bench-v1-2gb-8      build image-bench:v1-2gb-8 (2 GiB, 256 MiB x 8 layers)"

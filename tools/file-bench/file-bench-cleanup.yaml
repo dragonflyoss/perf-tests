@@ -1,0 +1,64 @@
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: file-bench-cleanup
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 86400
+  parallelism: 1
+  completions: 1
+  template:
+    metadata:
+      labels:
+        app: dragonfly
+        component: file-bench-cleanup
+    spec:
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: file-bench-cleanup
+          image: dragonflyoss/file-bench:latest
+          imagePullPolicy: 'IfNotPresent'
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ['ALL']
+          resources:
+            requests:
+              cpu: '500m'
+              memory: 512Mi
+            limits:
+              cpu: '1'
+              memory: 1Gi
+          # The image entrypoint is "dfbench file-bench". cleanup disables
+          # storage.keep in the dfdaemon configmaps and restarts the peer
+          # daemonset and the seed peer statefulset, so they start with an
+          # empty cache. It waits for both rollouts to finish.
+          args:
+            - 'cleanup'
+            - '--namespace=dragonfly-system'
+            - '--timeout=1h'
+          env:
+            # kubectl reads the cluster credentials from the standard KUBECONFIG
+            # variable, the file comes from the file-bench-kubeconfig secret.
+            - name: KUBECONFIG
+              value: /etc/kubeconfig/config
+          volumeMounts:
+            - name: kubeconfig
+              mountPath: /etc/kubeconfig
+              readOnly: true
+            # kubectl cache, HOME is /tmp in the image.
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        # kubectl create secret generic file-bench-kubeconfig --from-file=config=$HOME/.kube/config
+        - name: kubeconfig
+          secret:
+            secretName: file-bench-kubeconfig
+        - name: tmp
+          emptyDir: {}
