@@ -37,6 +37,8 @@ func TestStats(t *testing.T) {
 		Image:     "dragonflyoss/image-bench:v1-1gb-4",
 		Downloads: util.Downloads{{Peer: "node-1", Cost: time.Second}},
 		Traffic:   util.Traffic{BackToSource: 1 << 30},
+		Sampled:   1,
+		Members:   2,
 		Elapsed:   2 * time.Second,
 	})
 	if got := stats.GetResult(); got == nil || got.Image != "dragonflyoss/image-bench:v1-1gb-4" {

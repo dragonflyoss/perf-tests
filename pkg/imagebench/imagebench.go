@@ -66,11 +66,7 @@ func (b *imageBench) Run(ctx context.Context) error {
 
 	// Seed peers serve the peers and may back to source, so their traffic counts too.
 	members := slices.Concat(peers, seeds)
-	before, err := util.CollectTraffic(ctx, b.config.Namespace, b.config.MetricsPort, members)
-	if err != nil {
-		logrus.Errorf("failed to collect client metrics: %v", err)
-		return err
-	}
+	before := util.CollectTraffic(ctx, b.config.Namespace, b.config.MetricsPort, members)
 
 	fmt.Printf("Pulling %s on %d peers ...\n", image, len(peers))
 	start := time.Now()
@@ -79,18 +75,13 @@ func (b *imageBench) Run(ctx context.Context) error {
 		return err
 	}
 
-	after, err := util.CollectTraffic(ctx, b.config.Namespace, b.config.MetricsPort, members)
-	if err != nil {
-		logrus.Errorf("failed to collect client metrics: %v", err)
-		return err
+	after := util.CollectTraffic(ctx, b.config.Namespace, b.config.MetricsPort, members)
+	traffic, sampled := util.TrafficBetween(before, after)
+	if sampled < len(members) {
+		logrus.Warnf("read the metrics of %d of %d peers, the traffic leaves out the rest", sampled, len(members))
 	}
 
-	var traffic util.Traffic
-	for i := range members {
-		traffic = traffic.Add(after[i].Sub(before[i]))
-	}
-
-	result := &Result{Image: image, Downloads: downloads, Traffic: traffic, Elapsed: time.Since(start)}
+	result := &Result{Image: image, Downloads: downloads, Traffic: traffic, Sampled: sampled, Members: len(members), Elapsed: time.Since(start)}
 	b.stats.SetResult(result)
 
 	fmt.Printf("Pulled %s: %d/%d succeeded in %s\n", image, downloads.Succeeded(), len(downloads), result.Elapsed.Round(time.Millisecond))

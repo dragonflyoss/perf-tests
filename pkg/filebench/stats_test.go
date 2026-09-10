@@ -38,6 +38,8 @@ func TestStats(t *testing.T) {
 		URL:       "http://file-server.dragonfly-system.svc/1g",
 		Downloads: util.Downloads{{Peer: "client-1", Cost: time.Second}},
 		Traffic:   util.Traffic{BackToSource: 1 << 30},
+		Sampled:   1,
+		Members:   2,
 		Elapsed:   2 * time.Second,
 	})
 	if got := stats.GetResult(); got == nil || got.File != "1g" {

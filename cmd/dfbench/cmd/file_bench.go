@@ -60,6 +60,7 @@ func init() {
 	flags.Uint32VarP(&cfg.FileBench.Peers, "peers", "p", cfg.FileBench.Peers, "Specify the number of peers to download on for the file benchmark, default is all peers")
 	flags.StringVar(&cfg.FileBench.File, "file", cfg.FileBench.File, "Specify the file to download for the file benchmark [1b, 1k, 1m, 4m, 10m, 1g, 2g, 4g, 10g, 20g, 30g], default is 1g")
 	flags.StringVar(&cfg.FileBench.FileServer, "file-server", cfg.FileBench.FileServer, "Specify the base URL of the file server for the file benchmark, default is http://file-server.<namespace>.svc")
+	flags.StringVar(&cfg.FileBench.OutputDir, "output-dir", cfg.FileBench.OutputDir, "Specify the directory in the peer pods to write the downloaded files to, dfget hard links the file when it is on the dfdaemon storage filesystem, default is /tmp")
 	flags.Uint32Var(&cfg.FileBench.MetricsPort, "metrics-port", cfg.FileBench.MetricsPort, "Specify the metrics port of the dfdaemon to collect the traffic from, default is 4002")
 
 	cleanupFlags := fileBenchCleanupCmd.Flags()

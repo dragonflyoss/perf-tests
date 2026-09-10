@@ -125,6 +125,7 @@ image-bench
 
   Traffic         10.0 GiB total, 1.0 GiB back-to-source, 9.0 GiB remote peer, 0 B local peer
   Back to source  10.00%
+  Metrics         13 of 13 peers and seed peers read
 
   Result          PASSED, ✓ pull failed rate<0.01
 ```
@@ -138,6 +139,7 @@ image-bench
 | `pull`           | Pull duration reported by the kubelet on each node, `kubectl` polling overhead excluded.   |
 | `Traffic`        | Bytes the peers and seed peers downloaded during the run, read from dfdaemon metrics.      |
 | `Back to source` | Share of the traffic fetched from the registry, the rest came from the P2P network.        |
+| `Metrics`        | Peers whose metrics were read before and after the run, the traffic leaves out the others. |
 | `Result`         | `FAILED` and a non-zero exit code when more than 1% of the pulls failed.                   |
 
 ## Build the image

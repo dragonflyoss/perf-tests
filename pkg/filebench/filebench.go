@@ -22,6 +22,8 @@ import (
 	"net/url"
 	"path"
 	"slices"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -32,8 +34,16 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// OutputDir is the directory in the peer pods to write the downloaded files to.
-const OutputDir = "/tmp"
+// dfgetScript downloads $2 to $3 in the directory $1 by dfget and prints the start and end
+// time in nanoseconds, so the cost is measured in the pod without the kubectl exec overhead.
+// The dfget output goes to stderr, it is read when the download fails.
+const dfgetScript = `mkdir -p "$1" || exit $?
+start=$(date +%s%N)
+dfget "$2" --output "$3" 1>&2
+rc=$?
+end=$(date +%s%N)
+echo "$start $end"
+exit $rc`
 
 // FileBench represents a benchmark runner for concurrent file downloads.
 type FileBench interface {
@@ -82,11 +92,7 @@ func (f *fileBench) Run(ctx context.Context) error {
 
 	// Seed peers serve the peers and may back to source, so their traffic counts too.
 	members := slices.Concat(peers, seeds)
-	before, err := util.CollectTraffic(ctx, f.config.Namespace, f.config.MetricsPort, members)
-	if err != nil {
-		logrus.Errorf("failed to collect client metrics: %v", err)
-		return err
-	}
+	before := util.CollectTraffic(ctx, f.config.Namespace, f.config.MetricsPort, members)
 
 	fmt.Printf("Downloading %s on %d peers ...\n", downloadURL, len(peers))
 	start := time.Now()
@@ -99,18 +105,13 @@ func (f *fileBench) Run(ctx context.Context) error {
 	}
 	wg.Wait()
 
-	after, err := util.CollectTraffic(ctx, f.config.Namespace, f.config.MetricsPort, members)
-	if err != nil {
-		logrus.Errorf("failed to collect client metrics: %v", err)
-		return err
+	after := util.CollectTraffic(ctx, f.config.Namespace, f.config.MetricsPort, members)
+	traffic, sampled := util.TrafficBetween(before, after)
+	if sampled < len(members) {
+		logrus.Warnf("read the metrics of %d of %d peers, the traffic leaves out the rest", sampled, len(members))
 	}
 
-	var traffic util.Traffic
-	for i := range members {
-		traffic = traffic.Add(after[i].Sub(before[i]))
-	}
-
-	result := &Result{File: file, URL: downloadURL.String(), Downloads: downloads, Traffic: traffic, Elapsed: time.Since(start)}
+	result := &Result{File: file, URL: downloadURL.String(), Downloads: downloads, Traffic: traffic, Sampled: sampled, Members: len(members), Elapsed: time.Since(start)}
 	f.stats.SetResult(result)
 
 	fmt.Printf("Downloaded %s: %d/%d succeeded in %s\n", file, downloads.Succeeded(), len(downloads), result.Elapsed.Round(time.Millisecond))
@@ -127,10 +128,11 @@ func (f *fileBench) Cleanup(ctx context.Context) error {
 // downloadByDfget downloads the file on the peer by dfget and removes the output afterwards.
 func (f *fileBench) downloadByDfget(ctx context.Context, p util.Peer, downloadURL *url.URL, file string) *util.Download {
 	podExec := util.NewPodExec(f.config.Namespace, p.Pod, p.Container)
-	outputPath := path.Join(OutputDir, fmt.Sprintf("%s-%s-%s", path.Base(file), config.DownloaderDfget, uuid.New().String()))
+	outputPath := path.Join(f.config.OutputDir, fmt.Sprintf("%s-%s-%s", path.Base(file), config.DownloaderDfget, uuid.New().String()))
 
 	start := time.Now()
-	output, err := podExec.Command(ctx, "sh", "-c", fmt.Sprintf("dfget '%s' --output %s", downloadURL.String(), outputPath)).CombinedOutput()
+	// Read stdout only, kubectl prints warnings to stderr.
+	output, err := podExec.Command(ctx, "sh", "-c", dfgetScript, "sh", f.config.OutputDir, downloadURL.String(), outputPath).Output()
 	cost := time.Since(start)
 
 	if rmOutput, rmErr := podExec.Command(ctx, "sh", "-c", fmt.Sprintf("rm -f %s", outputPath)).CombinedOutput(); rmErr != nil {
@@ -138,10 +140,40 @@ func (f *fileBench) downloadByDfget(ctx context.Context, p util.Peer, downloadUR
 	}
 
 	if err != nil {
-		logrus.Errorf("failed to download file on %s: %v \nmessage: %s", p.Pod, err, string(output))
+		logrus.Errorf("failed to download file on %s: %v \nmessage: %s", p.Pod, err, util.Stderr(err))
 		return &util.Download{Peer: p.Pod, Cost: cost, Err: err}
 	}
 
-	logrus.Debugf("dfget output: %s", string(output))
+	// Prefer the cost measured in the pod, fall back to the wall-clock cost with the kubectl exec overhead.
+	if podCost, err := parseCost(output); err != nil {
+		logrus.Warnf("failed to parse the cost on %s, using the wall-clock cost: %v", p.Pod, err)
+	} else {
+		cost = podCost
+	}
+
 	return &util.Download{Peer: p.Pod, Cost: cost}
+}
+
+// parseCost parses the start and end time in nanoseconds printed by dfgetScript into the cost.
+func parseCost(output []byte) (time.Duration, error) {
+	fields := strings.Fields(string(output))
+	if len(fields) != 2 {
+		return 0, fmt.Errorf("expected the start and end time, got %q", string(output))
+	}
+
+	start, err := strconv.ParseInt(fields[0], 10, 64)
+	if err != nil {
+		return 0, err
+	}
+
+	end, err := strconv.ParseInt(fields[1], 10, 64)
+	if err != nil {
+		return 0, err
+	}
+
+	if end < start {
+		return 0, fmt.Errorf("end time %d is before start time %d", end, start)
+	}
+
+	return time.Duration(end - start), nil
 }

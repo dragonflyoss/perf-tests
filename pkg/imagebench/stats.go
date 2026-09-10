@@ -51,8 +51,14 @@ type Result struct {
 	// Downloads is the image pull of every peer node, the peer is the node name.
 	Downloads util.Downloads
 
-	// Traffic is the traffic of the peers and seed peers during the benchmark.
+	// Traffic is the traffic of the peers and seed peers during the benchmark, read from Sampled of them.
 	Traffic util.Traffic
+
+	// Sampled is the number of peers and seed peers whose metrics were read before and after the benchmark.
+	Sampled int
+
+	// Members is the number of peers and seed peers.
+	Members int
 
 	// Elapsed is the wall-clock time of the benchmark.
 	Elapsed time.Duration
@@ -97,6 +103,7 @@ func (s *stats) PrettyPrint() error {
 	report.Row("Traffic", fmt.Sprintf("%s total, %s back-to-source, %s remote peer, %s local peer",
 		humanize.IBytes(traffic.Total()), humanize.IBytes(traffic.BackToSource), humanize.IBytes(traffic.RemotePeer), humanize.IBytes(traffic.LocalPeer)))
 	report.Row("Back to source", util.FormatPercent(traffic.BackToSource, traffic.Total()))
+	report.Row("Metrics", fmt.Sprintf("%d of %d peers and seed peers read", result.Sampled, result.Members))
 	report.Blank()
 	report.Row("Result", util.FormatResult(downloads.Passed(), "pull"))
 	report.Blank()

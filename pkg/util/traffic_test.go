@@ -93,3 +93,27 @@ func TestTrafficAddTotal(t *testing.T) {
 		t.Fatalf("Total() = %d, want 66", got.Total())
 	}
 }
+
+func TestTrafficBetween(t *testing.T) {
+	before := map[string]Traffic{
+		"peer-1": {BackToSource: 100},
+		"peer-2": {RemotePeer: 200},
+		"peer-3": {LocalPeer: 300},
+	}
+	after := map[string]Traffic{
+		"peer-1": {BackToSource: 150},
+		"peer-2": {RemotePeer: 250},
+		"peer-4": {LocalPeer: 400},
+	}
+
+	got, n := TrafficBetween(before, after)
+	want := Traffic{BackToSource: 50, RemotePeer: 50}
+	if got != want {
+		t.Fatalf("TrafficBetween() = %+v, want %+v", got, want)
+	}
+
+	// peer-3 was not read after, peer-4 was not read before, both are left out.
+	if n != 2 {
+		t.Fatalf("TrafficBetween() sampled = %d, want 2", n)
+	}
+}

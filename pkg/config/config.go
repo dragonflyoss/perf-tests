@@ -109,6 +109,9 @@ type FileBenchConfig struct {
 	// FileServer is the base URL of the file server, http://file-server.<namespace>.svc when empty.
 	FileServer string `yaml:"file_server,omitempty" mapstructure:"file_server,omitempty"`
 
+	// OutputDir is the directory in the peer pods to write the downloaded files to.
+	OutputDir string `yaml:"output_dir,omitempty" mapstructure:"output_dir,omitempty"`
+
 	// MetricsPort is the metrics port of the dfdaemon to collect the traffic from.
 	MetricsPort uint32 `yaml:"metrics_port,omitempty" mapstructure:"metrics_port,omitempty"`
 }
@@ -176,6 +179,7 @@ func New() *Config {
 			SeedPeerContainer: "seed-client",
 			Peers:             0,
 			File:              "1g",
+			OutputDir:         "/tmp",
 			MetricsPort:       4002,
 		},
 		ImageBench: ImageBenchConfig{

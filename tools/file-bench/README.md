@@ -77,6 +77,7 @@ All knobs are flags, set them in the Job `args` or on the command line.
 | `--seed-peer-container` | `seed-client`           | Name of the dfdaemon container in the seed peer pods.          |
 | `--file`                | `1g`                    | File server path to download, see the file server image.       |
 | `--file-server`         | none                    | File server base URL, defaults to the one in `--namespace`.    |
+| `--output-dir`          | `/tmp`                  | Directory in the peer pods to download to, see below.          |
 | `--peers`               | `0`                     | Number of peers to download on, sorted by name, `0` is all.    |
 | `--metrics-port`        | `4002`                  | Metrics port of the dfdaemon to read the traffic.              |
 | `--peer-configmap`      | none                    | cleanup: dfdaemon configmap of the peers, else found by label. |
@@ -84,6 +85,11 @@ All knobs are flags, set them in the Job `args` or on the command line.
 | `--timeout`             | `30m`                   | Timeout of the whole run, raise it for large files.            |
 | `--kubeconfig`          | none                    | Kubeconfig to use, defaults to `$KUBECONFIG` like kubectl.     |
 | `--log-level`           | `info`                  | `debug` prints every `kubectl` command.                        |
+
+`dfget` hard links the downloaded file to `--output-dir` when the directory is on the same filesystem as the
+dfdaemon storage, `/var/lib/dragonfly` by default, and copies it otherwise. The copy of a large file takes a
+while and counts in the download latency, so point `--output-dir` at the storage filesystem, e.g.
+`/var/lib/dragonfly/dfbench`, unless the copy is what you want to measure. The directory is created if missing.
 
 ## Reading the report
 
@@ -101,20 +107,22 @@ file-bench
 
   Traffic         10.0 GiB total, 1.0 GiB back-to-source, 9.0 GiB remote peer, 0 B local peer
   Back to source  10.00%
+  Metrics         13 of 13 peers and seed peers read
 
   Result          PASSED, ✓ download failed rate<0.01
 ```
 
-| Row              | Meaning                                                                                |
-|------------------|----------------------------------------------------------------------------------------|
-| `Run`            | File, number of peers and wall-clock time of the run.                                  |
-| `Target`         | Download URL, the `uuid` makes every run a fresh Dragonfly task shared by all peers.   |
-| `Downloads`      | `dfget` runs started and how many exited successfully.                                 |
-| `Failed`         | `dfget` runs that exited with an error, their cost is left out of the latency row.     |
-| `download`       | Wall-clock time of `dfget` on each peer, `kubectl exec` overhead included.             |
-| `Traffic`        | Bytes the peers and seed peers downloaded during the run, read from dfdaemon metrics.  |
-| `Back to source` | Share of the traffic fetched from the file server, the rest came from the P2P network. |
-| `Result`         | `FAILED` and a non-zero exit code when more than 1% of the downloads failed.           |
+| Row              | Meaning                                                                                    |
+|------------------|--------------------------------------------------------------------------------------------|
+| `Run`            | File, number of peers and wall-clock time of the run.                                      |
+| `Target`         | Download URL, the `uuid` makes every run a fresh Dragonfly task shared by all peers.       |
+| `Downloads`      | `dfget` runs started and how many exited successfully.                                     |
+| `Failed`         | `dfget` runs that exited with an error, their cost is left out of the latency row.         |
+| `download`       | Time of `dfget` on each peer, measured in the pod, `kubectl exec` overhead excluded.       |
+| `Traffic`        | Bytes the peers and seed peers downloaded during the run, read from dfdaemon metrics.      |
+| `Back to source` | Share of the traffic fetched from the file server, the rest came from the P2P network.     |
+| `Metrics`        | Peers whose metrics were read before and after the run, the traffic leaves out the others. |
+| `Result`         | `FAILED` and a non-zero exit code when more than 1% of the downloads failed.               |
 
 ## Build the image
 

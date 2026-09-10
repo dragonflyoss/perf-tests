@@ -20,11 +20,11 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"sync"
 
 	"github.com/prometheus/common/expfmt"
 	"github.com/prometheus/common/model"
 	"github.com/sirupsen/logrus"
-	"golang.org/x/sync/errgroup"
 )
 
 // downloadTrafficMetric is the dfdaemon counter of the download traffic by type.
@@ -74,35 +74,58 @@ func subClamped(a, b uint64) uint64 {
 	return a - b
 }
 
-// CollectTraffic collects the traffic of the peers from their dfdaemon metrics port, indexed like peers.
-func CollectTraffic(ctx context.Context, namespace string, metricsPort uint32, peers []Peer) ([]Traffic, error) {
-	traffics := make([]Traffic, len(peers))
-	var eg errgroup.Group
+// CollectTraffic collects the traffic of the peers from their dfdaemon metrics port, keyed by pod name.
+// A peer whose metrics cannot be read is logged and left out, so one failed scrape does not fail the run.
+func CollectTraffic(ctx context.Context, namespace string, metricsPort uint32, peers []Peer) map[string]Traffic {
+	traffics := make([]*Traffic, len(peers))
+	var wg sync.WaitGroup
 	for i, p := range peers {
-		eg.Go(func() error {
+		wg.Go(func() {
 			traffic, err := getTraffic(ctx, namespace, metricsPort, p)
 			if err != nil {
-				return err
+				return
 			}
 
-			traffics[i] = traffic
-			return nil
+			traffics[i] = &traffic
 		})
 	}
+	wg.Wait()
 
-	if err := eg.Wait(); err != nil {
-		return nil, err
+	collected := make(map[string]Traffic, len(peers))
+	for i, p := range peers {
+		if traffics[i] != nil {
+			collected[p.Pod] = *traffics[i]
+		}
 	}
 
-	return traffics, nil
+	return collected
+}
+
+// TrafficBetween returns the traffic of the peers read both before and after, and how many they are.
+// A peer missing from either side is left out, its counters could not be compared.
+func TrafficBetween(before map[string]Traffic, after map[string]Traffic) (Traffic, int) {
+	var traffic Traffic
+	var n int
+	for pod, a := range after {
+		b, ok := before[pod]
+		if !ok {
+			continue
+		}
+
+		traffic = traffic.Add(a.Sub(b))
+		n++
+	}
+
+	return traffic, n
 }
 
 // getTraffic collects the traffic of the peer from the client metrics.
 func getTraffic(ctx context.Context, namespace string, metricsPort uint32, p Peer) (Traffic, error) {
 	podExec := NewPodExec(namespace, p.Pod, p.Container)
-	output, err := podExec.Command(ctx, "sh", "-c", fmt.Sprintf("curl -s http://127.0.0.1:%d/metrics", metricsPort)).CombinedOutput()
+	// Read stdout only, kubectl prints warnings to stderr.
+	output, err := podExec.Command(ctx, "sh", "-c", fmt.Sprintf("curl -s http://127.0.0.1:%d/metrics", metricsPort)).Output()
 	if err != nil {
-		logrus.Errorf("failed to get client metrics on %s: %v \nmessage: %s", p.Pod, err, string(output))
+		logrus.Errorf("failed to get client metrics on %s: %v \nmessage: %s", p.Pod, err, Stderr(err))
 		return Traffic{}, err
 	}
 
