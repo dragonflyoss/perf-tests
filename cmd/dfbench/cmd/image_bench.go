@@ -53,12 +53,19 @@ func init() {
 	persistentFlags.StringVar(&cfg.ImageBench.Image, "image", cfg.ImageBench.Image, "Specify the image to pull for the image benchmark, e.g. ghcr.io/dragonflyoss/image-bench:v1-10gb-10")
 	persistentFlags.Uint32VarP(&cfg.ImageBench.Peers, "peers", "p", cfg.ImageBench.Peers, "Specify the number of peer nodes to pull on for the image benchmark, default is all peer nodes")
 
+	flags := imageBenchCmd.Flags()
+	flags.Uint32Var(&cfg.ImageBench.MetricsPort, "metrics-port", cfg.ImageBench.MetricsPort, "Specify the metrics port of the dfdaemon to collect the traffic from, default is 4002")
+
 	cleanupFlags := imageBenchCleanupCmd.Flags()
 	cleanupFlags.StringVar(&cfg.ImageBench.CleanupImage, "cleanup-image", cfg.ImageBench.CleanupImage, "Specify the image of the cleanup pods, it must contain crictl")
 	cleanupFlags.StringVar(&cfg.ImageBench.ContainerdSocket, "containerd-socket", cfg.ImageBench.ContainerdSocket, "Specify the containerd socket path on the peer nodes")
 
 	if err := viper.BindPFlags(persistentFlags); err != nil {
 		panic(fmt.Errorf("bind cache image-bench persistent flags to viper: %w", err))
+	}
+
+	if err := viper.BindPFlags(flags); err != nil {
+		panic(fmt.Errorf("bind cache image-bench flags to viper: %w", err))
 	}
 
 	if err := viper.BindPFlags(cleanupFlags); err != nil {

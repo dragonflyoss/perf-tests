@@ -44,6 +44,8 @@ spec:
             - '--file=1g'
             # Number of peers to download on, 0 means every peer pod.
             - '--peers=0'
+            # Metrics port of the dfdaemon, the download traffic is read from it.
+            - '--metrics-port=4002'
             - '--timeout=2h'
           env:
             # kubectl reads the cluster credentials from the standard KUBECONFIG

@@ -27,13 +27,8 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-const (
-	// metricsPort is the dfdaemon metrics port.
-	metricsPort = 4002
-
-	// downloadTrafficMetric is the dfdaemon counter of the download traffic by type.
-	downloadTrafficMetric = "dragonfly_client_download_traffic"
-)
+// downloadTrafficMetric is the dfdaemon counter of the download traffic by type.
+const downloadTrafficMetric = "dragonfly_client_download_traffic"
 
 // Traffic represents the download traffic by type.
 type Traffic struct {
@@ -79,13 +74,13 @@ func subClamped(a, b uint64) uint64 {
 	return a - b
 }
 
-// CollectTraffic collects the traffic of the peers, indexed like peers.
-func CollectTraffic(ctx context.Context, namespace string, peers []Peer) ([]Traffic, error) {
+// CollectTraffic collects the traffic of the peers from their dfdaemon metrics port, indexed like peers.
+func CollectTraffic(ctx context.Context, namespace string, metricsPort uint32, peers []Peer) ([]Traffic, error) {
 	traffics := make([]Traffic, len(peers))
 	var eg errgroup.Group
 	for i, p := range peers {
 		eg.Go(func() error {
-			traffic, err := getTraffic(ctx, namespace, p)
+			traffic, err := getTraffic(ctx, namespace, metricsPort, p)
 			if err != nil {
 				return err
 			}
@@ -103,7 +98,7 @@ func CollectTraffic(ctx context.Context, namespace string, peers []Peer) ([]Traf
 }
 
 // getTraffic collects the traffic of the peer from the client metrics.
-func getTraffic(ctx context.Context, namespace string, p Peer) (Traffic, error) {
+func getTraffic(ctx context.Context, namespace string, metricsPort uint32, p Peer) (Traffic, error) {
 	podExec := NewPodExec(namespace, p.Pod, p.Container)
 	output, err := podExec.Command(ctx, "sh", "-c", fmt.Sprintf("curl -s http://127.0.0.1:%d/metrics", metricsPort)).CombinedOutput()
 	if err != nil {

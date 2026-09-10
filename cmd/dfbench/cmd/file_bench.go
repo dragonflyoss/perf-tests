@@ -55,6 +55,7 @@ func init() {
 	flags := fileBenchCmd.Flags()
 	flags.Uint32VarP(&cfg.FileBench.Peers, "peers", "p", cfg.FileBench.Peers, "Specify the number of peers to download on for the file benchmark, default is all peers")
 	flags.StringVar(&cfg.FileBench.File, "file", cfg.FileBench.File, "Specify the file to download for the file benchmark [1b, 1k, 1m, 4m, 10m, 1g, 2g, 4g, 10g, 20g, 30g], default is 1g")
+	flags.Uint32Var(&cfg.FileBench.MetricsPort, "metrics-port", cfg.FileBench.MetricsPort, "Specify the metrics port of the dfdaemon to collect the traffic from, default is 4002")
 
 	if err := viper.BindPFlags(persistentFlags); err != nil {
 		panic(fmt.Errorf("bind cache file-bench persistent flags to viper: %w", err))

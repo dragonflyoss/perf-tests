@@ -87,6 +87,9 @@ type FileBenchConfig struct {
 
 	// File is the file server path to download.
 	File string `yaml:"file,omitempty" mapstructure:"file,omitempty"`
+
+	// MetricsPort is the metrics port of the dfdaemon to collect the traffic from.
+	MetricsPort uint32 `yaml:"metrics_port,omitempty" mapstructure:"metrics_port,omitempty"`
 }
 
 // ImageBenchConfig is the configuration for benchmarking concurrent image pulls.
@@ -99,6 +102,9 @@ type ImageBenchConfig struct {
 
 	// Image is the image to pull.
 	Image string `yaml:"image,omitempty" mapstructure:"image,omitempty"`
+
+	// MetricsPort is the metrics port of the dfdaemon to collect the traffic from.
+	MetricsPort uint32 `yaml:"metrics_port,omitempty" mapstructure:"metrics_port,omitempty"`
 
 	// CleanupImage is the image of the cleanup pods, it must contain crictl.
 	CleanupImage string `yaml:"cleanup_image,omitempty" mapstructure:"cleanup_image,omitempty"`
@@ -124,14 +130,16 @@ func New() *Config {
 			Namespace: "nydus-snapshotter",
 		},
 		FileBench: FileBenchConfig{
-			Namespace: "dragonfly-system",
-			Peers:     0,
-			File:      "1g",
+			Namespace:   "dragonfly-system",
+			Peers:       0,
+			File:        "1g",
+			MetricsPort: 4002,
 		},
 		ImageBench: ImageBenchConfig{
 			Namespace:        "dragonfly-system",
 			Peers:            0,
 			Image:            "dragonflyoss/image-bench:v1-1gb-4",
+			MetricsPort:      4002,
 			CleanupImage:     "dragonflyoss/image-bench:latest",
 			ContainerdSocket: "/run/containerd/containerd.sock",
 		},

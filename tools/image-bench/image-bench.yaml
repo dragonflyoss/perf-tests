@@ -46,6 +46,8 @@ spec:
             - '--image=dragonflyoss/image-bench:v1-1gb-4'
             # Number of peer nodes to pull on, 0 means every peer node.
             - '--peers=0'
+            # Metrics port of the dfdaemon, the download traffic is read from it.
+            - '--metrics-port=4002'
             - '--timeout=2h'
           env:
             # kubectl reads the cluster credentials from the standard KUBECONFIG

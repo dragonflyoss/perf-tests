@@ -66,7 +66,7 @@ func (b *imageBench) Run(ctx context.Context) error {
 
 	// Seed peers serve the peers and may back to source, so their traffic counts too.
 	members := slices.Concat(peers, seeds)
-	before, err := util.CollectTraffic(ctx, b.config.Namespace, members)
+	before, err := util.CollectTraffic(ctx, b.config.Namespace, b.config.MetricsPort, members)
 	if err != nil {
 		logrus.Errorf("failed to collect client metrics: %v", err)
 		return err
@@ -79,7 +79,7 @@ func (b *imageBench) Run(ctx context.Context) error {
 		return err
 	}
 
-	after, err := util.CollectTraffic(ctx, b.config.Namespace, members)
+	after, err := util.CollectTraffic(ctx, b.config.Namespace, b.config.MetricsPort, members)
 	if err != nil {
 		logrus.Errorf("failed to collect client metrics: %v", err)
 		return err

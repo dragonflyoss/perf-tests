@@ -82,7 +82,7 @@ func (f *fileBench) Run(ctx context.Context) error {
 
 	// Seed peers serve the peers and may back to source, so their traffic counts too.
 	members := slices.Concat(peers, seeds)
-	before, err := util.CollectTraffic(ctx, f.config.Namespace, members)
+	before, err := util.CollectTraffic(ctx, f.config.Namespace, f.config.MetricsPort, members)
 	if err != nil {
 		logrus.Errorf("failed to collect client metrics: %v", err)
 		return err
@@ -99,7 +99,7 @@ func (f *fileBench) Run(ctx context.Context) error {
 	}
 	wg.Wait()
 
-	after, err := util.CollectTraffic(ctx, f.config.Namespace, members)
+	after, err := util.CollectTraffic(ctx, f.config.Namespace, f.config.MetricsPort, members)
 	if err != nil {
 		logrus.Errorf("failed to collect client metrics: %v", err)
 		return err
