@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Registry to push image-bench images to, e.g. D7Y_REGISTRY=ghcr.io/dragonflyoss make docker-push-image-bench.
+# Registry to push the images to, e.g. D7Y_REGISTRY=ghcr.io/dragonflyoss make docker-push-image-bench-images.
 D7Y_REGISTRY ?= dragonflyoss
 
 all: help
@@ -20,30 +20,60 @@ all: help
 # Build file-server image.
 docker-build-file-server:
 	@echo "Begin to use docker build file-server image."
-	docker buildx build --platform linux/amd64,linux/arm64 -t file-server:latest -f ./tools/file-server/Dockerfile .
+	docker buildx build --platform linux/amd64,linux/arm64 -t $(D7Y_REGISTRY)/file-server:latest -f ./tools/file-server/Dockerfile .
 .PHONY: docker-build-file-server
+
+# Push file-server image.
+docker-push-file-server:
+	@echo "Begin to push file-server docker image."
+	docker buildx build --platform linux/amd64,linux/arm64 --push -t $(D7Y_REGISTRY)/file-server:latest -f ./tools/file-server/Dockerfile .
+.PHONY: docker-push-file-server
 
 # Build proxy-bench image.
 docker-build-proxy-bench:
 	@echo "Begin to use docker build proxy-bench image."
-	docker buildx build --platform linux/amd64,linux/arm64 -t proxy-bench:latest -f ./tools/proxy-bench/Dockerfile .
+	docker buildx build --platform linux/amd64,linux/arm64 -t $(D7Y_REGISTRY)/proxy-bench:latest -f ./tools/proxy-bench/Dockerfile .
 .PHONY: docker-build-proxy-bench
 
-# Build all image-bench images.
-docker-build-image-bench: docker-build-image-bench-v1-1gb-4 docker-build-image-bench-v1-2gb-8 docker-build-image-bench-v1-4gb-8 docker-build-image-bench-v1-10gb-10 docker-build-image-bench-v1-20gb-4
-	@echo "Build image-bench images done."
+# Push proxy-bench image.
+docker-push-proxy-bench:
+	@echo "Begin to push proxy-bench docker image."
+	docker buildx build --platform linux/amd64,linux/arm64 --push -t $(D7Y_REGISTRY)/proxy-bench:latest -f ./tools/proxy-bench/Dockerfile .
+.PHONY: docker-push-proxy-bench
+
+# Build file-bench image.
+docker-build-file-bench:
+	@echo "Begin to use docker build file-bench image."
+	docker buildx build --platform linux/amd64,linux/arm64 -t $(D7Y_REGISTRY)/file-bench:latest -f ./tools/file-bench/Dockerfile .
+.PHONY: docker-build-file-bench
+
+# Push file-bench image.
+docker-push-file-bench:
+	@echo "Begin to push file-bench docker image."
+	docker buildx build --platform linux/amd64,linux/arm64 --push -t $(D7Y_REGISTRY)/file-bench:latest -f ./tools/file-bench/Dockerfile .
+.PHONY: docker-push-file-bench
+
+# Build image-bench image.
+docker-build-image-bench:
+	@echo "Begin to use docker build image-bench image."
+	docker buildx build --platform linux/amd64,linux/arm64 -t $(D7Y_REGISTRY)/image-bench:latest -f ./tools/image-bench/Dockerfile .
 .PHONY: docker-build-image-bench
 
-# Build image-bench-runner image.
-docker-build-image-bench-runner:
-	@echo "Begin to use docker build image-bench-runner image."
-	docker buildx build --platform linux/amd64,linux/arm64 -t image-bench-runner:latest -f ./tools/image-bench/Dockerfile .
-.PHONY: docker-build-image-bench-runner
-
-# Push all image-bench images.
-docker-push-image-bench: docker-push-image-bench-v1-1gb-4 docker-push-image-bench-v1-2gb-8 docker-push-image-bench-v1-4gb-8 docker-push-image-bench-v1-10gb-10 docker-push-image-bench-v1-20gb-4
-	@echo "Push image-bench images done."
+# Push image-bench image.
+docker-push-image-bench:
+	@echo "Begin to push image-bench docker image."
+	docker buildx build --platform linux/amd64,linux/arm64 --push -t $(D7Y_REGISTRY)/image-bench:latest -f ./tools/image-bench/Dockerfile .
 .PHONY: docker-push-image-bench
+
+# Build all image-bench images pulled by the image benchmark, see build/images/image-bench.
+docker-build-image-bench-images: docker-build-image-bench-v1-1gb-4 docker-build-image-bench-v1-2gb-8 docker-build-image-bench-v1-4gb-8 docker-build-image-bench-v1-10gb-10 docker-build-image-bench-v1-20gb-4
+	@echo "Build image-bench images done."
+.PHONY: docker-build-image-bench-images
+
+# Push all image-bench images pulled by the image benchmark.
+docker-push-image-bench-images: docker-push-image-bench-v1-1gb-4 docker-push-image-bench-v1-2gb-8 docker-push-image-bench-v1-4gb-8 docker-push-image-bench-v1-10gb-10 docker-push-image-bench-v1-20gb-4
+	@echo "Push image-bench images done."
+.PHONY: docker-push-image-bench-images
 
 # Build image-bench:v1-1gb-4 (1 GiB, 256 MiB x 4 layers).
 docker-build-image-bench-v1-1gb-4:
@@ -125,15 +155,20 @@ clean:
 
 help: 
 	@echo "make docker-build-file-server               build file-server image"
+	@echo "make docker-push-file-server                push file-server image"
 	@echo "make docker-build-proxy-bench               build proxy-bench image"
-	@echo "make docker-build-image-bench               build all image-bench images"
+	@echo "make docker-push-proxy-bench                push proxy-bench image"
+	@echo "make docker-build-file-bench                build file-bench image"
+	@echo "make docker-push-file-bench                 push file-bench image"
+	@echo "make docker-build-image-bench               build image-bench image"
+	@echo "make docker-push-image-bench                push image-bench image"
+	@echo "make docker-build-image-bench-images        build all image-bench images pulled by the image benchmark"
 	@echo "make docker-build-image-bench-v1-1gb-4      build image-bench:v1-1gb-4 (1 GiB, 256 MiB x 4 layers)"
 	@echo "make docker-build-image-bench-v1-2gb-8      build image-bench:v1-2gb-8 (2 GiB, 256 MiB x 8 layers)"
 	@echo "make docker-build-image-bench-v1-4gb-8      build image-bench:v1-4gb-8 (4 GiB, 512 MiB x 8 layers)"
 	@echo "make docker-build-image-bench-v1-10gb-10    build image-bench:v1-10gb-10 (10 GiB, 1 GiB x 10 layers)"
 	@echo "make docker-build-image-bench-v1-20gb-4     build image-bench:v1-20gb-4 (20 GiB, 5 GiB x 4 layers)"
-	@echo "make docker-build-image-bench-runner        build image-bench-runner image"
-	@echo "make docker-push-image-bench                push all image-bench images"
+	@echo "make docker-push-image-bench-images         push all image-bench images pulled by the image benchmark"
 	@echo "make docker-push-image-bench-v1-1gb-4       push image-bench:v1-1gb-4"
 	@echo "make docker-push-image-bench-v1-2gb-8       push image-bench:v1-2gb-8"
 	@echo "make docker-push-image-bench-v1-4gb-8       push image-bench:v1-4gb-8"

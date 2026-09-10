@@ -9,7 +9,7 @@ hit in the local cache.
 
 - Dragonfly installed in the cluster, see the [root README](../../README.md).
 - The containerd `certs.d` of the nodes routes the registry of the image through the dfdaemon proxy.
-- The benchmark images pushed to that registry, see `make docker-push-image-bench`. They are built from
+- The benchmark images pushed to that registry, see `make docker-push-image-bench-images`. They are built from
   [build/images/image-bench](../../build/images/image-bench) and hold nothing but random data layers:
 
   | Tag          | Size   | Layers       |
@@ -81,16 +81,16 @@ dfbench image-bench cleanup --namespace dragonfly-system --image ghcr.io/dragonf
 
 All knobs are flags, set them in the Job `args` or on the command line.
 
-| Flag                  | Default                                  | Description                                       |
-|-----------------------|------------------------------------------|---------------------------------------------------|
-| `--namespace`         | `dragonfly-system`                       | Namespace of the peers, the pods run in it too.   |
-| `--image`             | `dragonflyoss/image-bench:v1-1gb-4`      | Image to pull, any registry.                      |
-| `--peers`             | `0`                                      | Peer nodes to pull on, sorted by name, `0` is all.|
-| `--cleanup-image`     | `dragonflyoss/image-bench-runner:latest` | cleanup: image of the cleanup pods, has `crictl`. |
-| `--containerd-socket` | `/run/containerd/containerd.sock`        | cleanup: containerd socket of the nodes.          |
-| `--timeout`           | `30m`                                    | Timeout of the whole run, raise it for big images.|
-| `--kubeconfig`        | none                                     | Kubeconfig to use, defaults to `$KUBECONFIG`.     |
-| `--log-level`         | `info`                                   | `debug` prints every `kubectl` command.           |
+| Flag                  | Default                             | Description                                        |
+|-----------------------|-------------------------------------|----------------------------------------------------|
+| `--namespace`         | `dragonfly-system`                  | Namespace of the peers, the pods run in it too.    |
+| `--image`             | `dragonflyoss/image-bench:v1-1gb-4` | Image to pull, any registry.                       |
+| `--peers`             | `0`                                 | Peer pods to pull on, sorted by name, `0` is all.  |
+| `--cleanup-image`     | `dragonflyoss/image-bench:latest`   | cleanup: image of the cleanup pods, has `crictl`.  |
+| `--containerd-socket` | `/run/containerd/containerd.sock`   | cleanup: containerd socket of the nodes.           |
+| `--timeout`           | `30m`                               | Timeout of the whole run, raise it for big images. |
+| `--kubeconfig`        | none                                | Kubeconfig to use, defaults to `$KUBECONFIG`.      |
+| `--log-level`         | `info`                              | `debug` prints every `kubectl` command.            |
 
 ## How it works
 
@@ -136,7 +136,7 @@ image-bench
 ## Build the image
 
 ```shell
-make docker-build-image-bench-runner
+make docker-build-image-bench
 ```
 
 Tag and push it, then update `image` in `image-bench.yaml` and `image-bench-cleanup.yaml`.

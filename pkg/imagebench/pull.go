@@ -22,10 +22,18 @@ import (
 	"regexp"
 	"time"
 
+	"github.com/dragonflyoss/perf-tests/pkg/util"
+	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 )
 
 const (
+	// pollInterval is the interval between two checks of the pull pods.
+	pollInterval = 2 * time.Second
+
+	// runLabel is the label key of the run id on the pods created by the benchmark.
+	runLabel = "image-bench-run"
+
 	// pullComponent is the component label of the pull pods.
 	pullComponent = "image-bench-pull"
 
@@ -50,31 +58,36 @@ var pullFailureReasons = map[string]bool{
 	"ErrImageNeverPull": true,
 }
 
+// newID returns a short random id for the pods of a run.
+func newID() string {
+	return uuid.New().String()[:8]
+}
+
 // pull creates one pod per peer pinned to its node, so every node pulls the image
 // by containerd at the same time, waits for the pulls and deletes the pods.
-func (b *imageBench) pull(ctx context.Context, image string, peers []peer) ([]*Download, error) {
+func (b *imageBench) pull(ctx context.Context, image string, peers []util.Peer) (util.Downloads, error) {
 	runID := newID()
 	label := runLabel + "=" + runID
 
-	downloads := make([]*Download, 0, len(peers))
-	pending := make(map[string]*Download, len(peers))
+	downloads := make(util.Downloads, 0, len(peers))
+	pending := make(map[string]*util.Download, len(peers))
 	pods := make([]any, 0, len(peers))
 	for i, p := range peers {
 		name := fmt.Sprintf("image-bench-%s-%d", runID, i)
-		download := &Download{Node: p.node, Pod: name}
+		download := &util.Download{Peer: p.Node}
 		downloads = append(downloads, download)
 		pending[name] = download
-		pods = append(pods, pullPod(b.config.Namespace, name, runID, image, p.node))
+		pods = append(pods, pullPod(b.config.Namespace, name, runID, image, p.Node))
 	}
 
 	// Delete the pods on a fresh context, so they do not leak when the benchmark timed out.
 	defer func() {
-		if err := deletePods(context.WithoutCancel(ctx), b.config.Namespace, label); err != nil {
+		if err := util.DeletePods(context.WithoutCancel(ctx), b.config.Namespace, label); err != nil {
 			logrus.Errorf("failed to delete pods: %v", err)
 		}
 	}()
 
-	if err := createPods(ctx, pods); err != nil {
+	if err := util.CreatePods(ctx, pods); err != nil {
 		logrus.Errorf("failed to create pods: %v", err)
 		return nil, err
 	}
@@ -89,14 +102,14 @@ func (b *imageBench) pull(ctx context.Context, image string, peers []peer) ([]*D
 
 // waitForPulls polls the pull pods and their events until every pending pod pulled
 // the image or failed to.
-func (b *imageBench) waitForPulls(ctx context.Context, label string, pending map[string]*Download) error {
+func (b *imageBench) waitForPulls(ctx context.Context, label string, pending map[string]*util.Download) error {
 	for len(pending) > 0 {
-		pods, err := listPods(ctx, b.config.Namespace, label)
+		pods, err := util.ListPods(ctx, b.config.Namespace, label)
 		if err != nil {
 			return err
 		}
 
-		events, err := listPodEvents(ctx, b.config.Namespace)
+		events, err := util.ListPodEvents(ctx, b.config.Namespace)
 		if err != nil {
 			return err
 		}
@@ -110,14 +123,14 @@ func (b *imageBench) waitForPulls(ctx context.Context, label string, pending map
 			if cost, ok := pulledCost(p, events[p.Metadata.UID]); ok {
 				download.Cost = cost
 				delete(pending, p.Metadata.Name)
-				logrus.Debugf("pulled image on %s in %s", download.Node, cost)
+				logrus.Debugf("pulled image on %s in %s", download.Peer, cost)
 				continue
 			}
 
 			if err := pullError(p); err != nil {
 				download.Err = err
 				delete(pending, p.Metadata.Name)
-				logrus.Errorf("failed to pull image on %s: %v", download.Node, err)
+				logrus.Errorf("failed to pull image on %s: %v", download.Peer, err)
 			}
 		}
 
@@ -136,7 +149,7 @@ func (b *imageBench) waitForPulls(ctx context.Context, label string, pending map
 }
 
 // pulledCost returns the pull cost from the Pulled event of the pod, false until the image is pulled.
-func pulledCost(p pod, events []event) (time.Duration, bool) {
+func pulledCost(p util.Pod, events []util.Event) (time.Duration, bool) {
 	for _, e := range events {
 		if e.Reason != "Pulled" {
 			continue
@@ -149,7 +162,7 @@ func pulledCost(p pod, events []event) (time.Duration, bool) {
 		}
 
 		// The image was already present on the node, fall back to the coarse timestamps.
-		if t := e.timestamp(); !t.IsZero() && !p.Metadata.CreationTimestamp.IsZero() {
+		if t := e.Timestamp(); !t.IsZero() && !p.Metadata.CreationTimestamp.IsZero() {
 			return max(t.Sub(p.Metadata.CreationTimestamp), 0), true
 		}
 
@@ -160,10 +173,10 @@ func pulledCost(p pod, events []event) (time.Duration, bool) {
 }
 
 // pullError returns why the pod cannot pull the image, nil while the pull is running or once it succeeded.
-func pullError(p pod) error {
+func pullError(p util.Pod) error {
 	// The kubelet rejected the pod, e.g. out of resources. A failed pod without a
 	// reason ran the container after the pull, which is expected to fail, see pullCommand.
-	if p.Status.Phase == podFailed && p.Status.Reason != "" {
+	if p.Status.Phase == util.PodFailed && p.Status.Reason != "" {
 		return fmt.Errorf("%s: %s", p.Status.Reason, p.Status.Message)
 	}
 

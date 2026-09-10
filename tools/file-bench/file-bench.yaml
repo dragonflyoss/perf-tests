@@ -2,7 +2,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: image-bench
+  name: file-bench
 spec:
   backoffLimit: 0
   ttlSecondsAfterFinished: 86400
@@ -12,7 +12,7 @@ spec:
     metadata:
       labels:
         app: dragonfly
-        component: image-bench
+        component: file-bench
     spec:
       restartPolicy: Never
       securityContext:
@@ -20,8 +20,8 @@ spec:
         seccompProfile:
           type: RuntimeDefault
       containers:
-        - name: image-bench
-          image: dragonflyoss/image-bench:latest
+        - name: file-bench
+          image: dragonflyoss/file-bench:latest
           imagePullPolicy: 'IfNotPresent'
           securityContext:
             allowPrivilegeEscalation: false
@@ -35,21 +35,19 @@ spec:
             limits:
               cpu: '4'
               memory: 8Gi
-          # The image entrypoint is "dfbench image-bench". The report is printed
-          # to stdout, read it with kubectl logs job/image-bench. The Job fails
-          # when more than 1% of the pulls failed.
+          # The image entrypoint is "dfbench file-bench". The report is printed
+          # to stdout, read it with kubectl logs job/file-bench. The Job fails
+          # when more than 1% of the downloads failed.
           args:
             - '--namespace=dragonfly-system'
-            # Image to pull, configure the containerd certs.d of the nodes so
-            # that its registry goes through the dfdaemon proxy. The tags are
-            # v1-1gb-4, v1-2gb-8, v1-4gb-8, v1-10gb-10 and v1-20gb-4.
-            - '--image=dragonflyoss/image-bench:v1-1gb-4'
-            # Number of peer nodes to pull on, 0 means every peer node.
+            # File to download, one of 1b, 1k, 1m, 4m, 10m, 1g, 2g, 4g, 10g, 20g, 30g.
+            - '--file=1g'
+            # Number of peers to download on, 0 means every peer pod.
             - '--peers=0'
             - '--timeout=2h'
           env:
             # kubectl reads the cluster credentials from the standard KUBECONFIG
-            # variable, the file comes from the image-bench-kubeconfig secret.
+            # variable, the file comes from the file-bench-kubeconfig secret.
             - name: KUBECONFIG
               value: /etc/kubeconfig/config
           volumeMounts:
@@ -60,9 +58,9 @@ spec:
             - name: tmp
               mountPath: /tmp
       volumes:
-        # kubectl create secret generic image-bench-kubeconfig --from-file=config=$HOME/.kube/config
+        # kubectl create secret generic file-bench-kubeconfig --from-file=config=$HOME/.kube/config
         - name: kubeconfig
           secret:
-            secretName: image-bench-kubeconfig
+            secretName: file-bench-kubeconfig
         - name: tmp
           emptyDir: {}

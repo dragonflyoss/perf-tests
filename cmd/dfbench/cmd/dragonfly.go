@@ -53,7 +53,7 @@ func init() {
 	flags.Uint32VarP(&cfg.Dragonfly.Number, "number", "n", cfg.Dragonfly.Number, "Specify the number of times to run the dragonfly benchmark")
 	flags.StringVar(&cfg.Dragonfly.Namespace, "namespace", cfg.Dragonfly.Namespace, "Specify the namespace to use for the dragonfly benchmark")
 	flags.StringVarP(&cfg.Dragonfly.Downloader, "downloader", "d", cfg.Dragonfly.Downloader, "Specify the downloader to use for the dragonfly benchmark [dfget, proxy], default is dfget")
-	flags.StringVar(&cfg.Dragonfly.FileSizeLevel, "file-size-level", cfg.Dragonfly.FileSizeLevel, "Specify the file size level to use for the dragonfly benchmark [nano, micro, small, medium, large, xlarge, xxlarge], default is running all levels")
+	flags.StringVar(&cfg.Dragonfly.FileSizeLevel, "file-size-level", cfg.Dragonfly.FileSizeLevel, "Specify the file size level to use for the dragonfly benchmark [1b, 1k, 1m, 10m, 1g, 10g, 30g], default is running all levels")
 
 	if err := viper.BindPFlags(flags); err != nil {
 		panic(fmt.Errorf("bind cache dragonfly flags to viper: %w", err))

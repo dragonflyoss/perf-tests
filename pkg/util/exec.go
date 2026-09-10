@@ -18,6 +18,7 @@ package util
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os/exec"
@@ -63,6 +64,17 @@ func GetResourceNames(ctx context.Context, namespace string, resource string, la
 	}
 
 	return strings.Fields(string(output)), nil
+}
+
+// getJSON runs kubectl get with the JSON output and decodes it into out.
+func getJSON(ctx context.Context, out any, resource string, args ...string) error {
+	// Read stdout only, kubectl prints warnings to stderr.
+	output, err := KubeCtlCommand(ctx, append(append([]string{"get", resource}, args...), "-o", "json")...).Output()
+	if err != nil {
+		return fmt.Errorf("failed to get %s: %w \nmessage: %s", resource, err, Stderr(err))
+	}
+
+	return json.Unmarshal(output, out)
 }
 
 // KubeCtlCommand returns a kubectl command.

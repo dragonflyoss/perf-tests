@@ -14,14 +14,13 @@
  * limitations under the License.
  */
 
-package imagebench
+package util
 
 import (
 	"bytes"
 	"context"
 	"fmt"
 
-	"github.com/dragonflyoss/perf-tests/pkg/util"
 	"github.com/prometheus/common/expfmt"
 	"github.com/prometheus/common/model"
 	"github.com/sirupsen/logrus"
@@ -80,8 +79,8 @@ func subClamped(a, b uint64) uint64 {
 	return a - b
 }
 
-// collectTraffic collects the traffic of the peers, indexed like peers.
-func collectTraffic(ctx context.Context, namespace string, peers []peer) ([]Traffic, error) {
+// CollectTraffic collects the traffic of the peers, indexed like peers.
+func CollectTraffic(ctx context.Context, namespace string, peers []Peer) ([]Traffic, error) {
 	traffics := make([]Traffic, len(peers))
 	var eg errgroup.Group
 	for i, p := range peers {
@@ -104,17 +103,17 @@ func collectTraffic(ctx context.Context, namespace string, peers []peer) ([]Traf
 }
 
 // getTraffic collects the traffic of the peer from the client metrics.
-func getTraffic(ctx context.Context, namespace string, p peer) (Traffic, error) {
-	podExec := util.NewPodExec(namespace, p.pod, p.container)
+func getTraffic(ctx context.Context, namespace string, p Peer) (Traffic, error) {
+	podExec := NewPodExec(namespace, p.Pod, p.Container)
 	output, err := podExec.Command(ctx, "sh", "-c", fmt.Sprintf("curl -s http://127.0.0.1:%d/metrics", metricsPort)).CombinedOutput()
 	if err != nil {
-		logrus.Errorf("failed to get client metrics on %s: %v \nmessage: %s", p.pod, err, string(output))
+		logrus.Errorf("failed to get client metrics on %s: %v \nmessage: %s", p.Pod, err, string(output))
 		return Traffic{}, err
 	}
 
 	traffic, err := parseTraffic(output)
 	if err != nil {
-		logrus.Errorf("failed to parse metrics on %s: %v", p.pod, err)
+		logrus.Errorf("failed to parse metrics on %s: %v", p.Pod, err)
 		return Traffic{}, err
 	}
 

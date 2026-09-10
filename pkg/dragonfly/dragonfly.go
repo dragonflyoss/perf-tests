@@ -85,38 +85,38 @@ func (d *dragonfly) Run(ctx context.Context, downloader string) error {
 
 // Run runs all benchmarks by dfget.
 func (d *dragonfly) runByDfget(ctx context.Context) error {
-	if err := d.DownloadFileByDfget(ctx, backend.FileSizeLevelNano); err != nil {
-		logrus.Errorf("failed to download %s file by dfget: %v", backend.FileSizeLevelNano, err)
+	if err := d.DownloadFileByDfget(ctx, backend.FileSizeLevel1B); err != nil {
+		logrus.Errorf("failed to download %s file by dfget: %v", backend.FileSizeLevel1B, err)
 		return err
 	}
 
-	if err := d.DownloadFileByDfget(ctx, backend.FileSizeLevelMicro); err != nil {
-		logrus.Errorf("failed to download %s file by dfget: %v", backend.FileSizeLevelNano, err)
+	if err := d.DownloadFileByDfget(ctx, backend.FileSizeLevel1K); err != nil {
+		logrus.Errorf("failed to download %s file by dfget: %v", backend.FileSizeLevel1B, err)
 		return err
 	}
 
-	if err := d.DownloadFileByDfget(ctx, backend.FileSizeLevelSmall); err != nil {
-		logrus.Errorf("failed to download %s file by dfget: %v", backend.FileSizeLevelNano, err)
+	if err := d.DownloadFileByDfget(ctx, backend.FileSizeLevel1M); err != nil {
+		logrus.Errorf("failed to download %s file by dfget: %v", backend.FileSizeLevel1B, err)
 		return err
 	}
 
-	if err := d.DownloadFileByDfget(ctx, backend.FileSizeLevelMedium); err != nil {
-		logrus.Errorf("failed to download %s file by dfget: %v", backend.FileSizeLevelNano, err)
+	if err := d.DownloadFileByDfget(ctx, backend.FileSizeLevel10M); err != nil {
+		logrus.Errorf("failed to download %s file by dfget: %v", backend.FileSizeLevel1B, err)
 		return err
 	}
 
-	if err := d.DownloadFileByDfget(ctx, backend.FileSizeLevelLarge); err != nil {
-		logrus.Errorf("failed to download %s file by dfget: %v", backend.FileSizeLevelNano, err)
+	if err := d.DownloadFileByDfget(ctx, backend.FileSizeLevel1G); err != nil {
+		logrus.Errorf("failed to download %s file by dfget: %v", backend.FileSizeLevel1B, err)
 		return err
 	}
 
-	if err := d.DownloadFileByDfget(ctx, backend.FileSizeLevelXLarge); err != nil {
-		logrus.Errorf("failed to download %s file by dfget: %v", backend.FileSizeLevelNano, err)
+	if err := d.DownloadFileByDfget(ctx, backend.FileSizeLevel10G); err != nil {
+		logrus.Errorf("failed to download %s file by dfget: %v", backend.FileSizeLevel1B, err)
 		return err
 	}
 
-	if err := d.DownloadFileByDfget(ctx, backend.FileSizeLevelXXLarge); err != nil {
-		logrus.Errorf("failed to download %s file by dfget: %v", backend.FileSizeLevelNano, err)
+	if err := d.DownloadFileByDfget(ctx, backend.FileSizeLevel30G); err != nil {
+		logrus.Errorf("failed to download %s file by dfget: %v", backend.FileSizeLevel1B, err)
 		return err
 	}
 
@@ -125,38 +125,38 @@ func (d *dragonfly) runByDfget(ctx context.Context) error {
 
 // Run runs all benchmarks by proxy.
 func (d *dragonfly) runByProxy(ctx context.Context) error {
-	if err := d.DownloadFileByProxy(ctx, backend.FileSizeLevelNano); err != nil {
-		logrus.Errorf("failed to download %s file by proxy: %v", backend.FileSizeLevelNano, err)
+	if err := d.DownloadFileByProxy(ctx, backend.FileSizeLevel1B); err != nil {
+		logrus.Errorf("failed to download %s file by proxy: %v", backend.FileSizeLevel1B, err)
 		return err
 	}
 
-	if err := d.DownloadFileByProxy(ctx, backend.FileSizeLevelMicro); err != nil {
-		logrus.Errorf("failed to download %s file by proxy: %v", backend.FileSizeLevelNano, err)
+	if err := d.DownloadFileByProxy(ctx, backend.FileSizeLevel1K); err != nil {
+		logrus.Errorf("failed to download %s file by proxy: %v", backend.FileSizeLevel1B, err)
 		return err
 	}
 
-	if err := d.DownloadFileByProxy(ctx, backend.FileSizeLevelSmall); err != nil {
-		logrus.Errorf("failed to download %s file by proxy: %v", backend.FileSizeLevelNano, err)
+	if err := d.DownloadFileByProxy(ctx, backend.FileSizeLevel1M); err != nil {
+		logrus.Errorf("failed to download %s file by proxy: %v", backend.FileSizeLevel1B, err)
 		return err
 	}
 
-	if err := d.DownloadFileByProxy(ctx, backend.FileSizeLevelMedium); err != nil {
-		logrus.Errorf("failed to download %s file by proxy: %v", backend.FileSizeLevelNano, err)
+	if err := d.DownloadFileByProxy(ctx, backend.FileSizeLevel10M); err != nil {
+		logrus.Errorf("failed to download %s file by proxy: %v", backend.FileSizeLevel1B, err)
 		return err
 	}
 
-	if err := d.DownloadFileByProxy(ctx, backend.FileSizeLevelLarge); err != nil {
-		logrus.Errorf("failed to download %s file by proxy: %v", backend.FileSizeLevelNano, err)
+	if err := d.DownloadFileByProxy(ctx, backend.FileSizeLevel1G); err != nil {
+		logrus.Errorf("failed to download %s file by proxy: %v", backend.FileSizeLevel1B, err)
 		return err
 	}
 
-	if err := d.DownloadFileByProxy(ctx, backend.FileSizeLevelXLarge); err != nil {
-		logrus.Errorf("failed to download %s file by proxy: %v", backend.FileSizeLevelNano, err)
+	if err := d.DownloadFileByProxy(ctx, backend.FileSizeLevel10G); err != nil {
+		logrus.Errorf("failed to download %s file by proxy: %v", backend.FileSizeLevel1B, err)
 		return err
 	}
 
-	if err := d.DownloadFileByProxy(ctx, backend.FileSizeLevelXXLarge); err != nil {
-		logrus.Errorf("failed to download %s file by proxy: %v", backend.FileSizeLevelNano, err)
+	if err := d.DownloadFileByProxy(ctx, backend.FileSizeLevel30G); err != nil {
+		logrus.Errorf("failed to download %s file by proxy: %v", backend.FileSizeLevel1B, err)
 		return err
 	}
 

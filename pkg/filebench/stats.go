@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package imagebench
+package filebench
 
 import (
 	"errors"
@@ -43,12 +43,15 @@ type stats struct {
 	result *Result
 }
 
-// Result represents the pulls of the image on all peer nodes.
+// Result represents the downloads of the file on all peers.
 type Result struct {
-	// Image is the pulled image.
-	Image string
+	// File is the downloaded file.
+	File string
 
-	// Downloads is the image pull of every peer node, the peer is the node name.
+	// URL is the download URL.
+	URL string
+
+	// Downloads is the dfget download of every peer.
 	Downloads util.Downloads
 
 	// Traffic is the traffic of the peers and seed peers during the benchmark.
@@ -84,21 +87,21 @@ func (s *stats) PrettyPrint() error {
 	total, succeeded := len(downloads), downloads.Succeeded()
 	failed := total - succeeded
 
-	report := util.NewReport("image-bench")
-	report.Row("Run", fmt.Sprintf("%d peers by containerd, %s", total, util.FormatSeconds(result.Elapsed)))
-	report.Row("Target", result.Image)
+	report := util.NewReport("file-bench")
+	report.Row("Run", fmt.Sprintf("%s on %d peers by dfget, %s", result.File, total, util.FormatSeconds(result.Elapsed)))
+	report.Row("Target", result.URL)
 	report.Blank()
-	report.Row("Pulls", fmt.Sprintf("%d total, %d succeeded", total, succeeded))
+	report.Row("Downloads", fmt.Sprintf("%d total, %d succeeded", total, succeeded))
 	report.Row("Failed", fmt.Sprintf("%d of %d (%s)", failed, total, util.FormatPercent(failed, total)))
 	report.Blank()
 	report.Cells("Latency (ms)", util.TrendStats)
-	report.Cells("  pull", util.Latencies(downloads.Costs()))
+	report.Cells("  download", util.Latencies(downloads.Costs()))
 	report.Blank()
 	report.Row("Traffic", fmt.Sprintf("%s total, %s back-to-source, %s remote peer, %s local peer",
 		humanize.IBytes(traffic.Total()), humanize.IBytes(traffic.BackToSource), humanize.IBytes(traffic.RemotePeer), humanize.IBytes(traffic.LocalPeer)))
 	report.Row("Back to source", util.FormatPercent(traffic.BackToSource, traffic.Total()))
 	report.Blank()
-	report.Row("Result", util.FormatResult(downloads.Passed(), "pull"))
+	report.Row("Result", util.FormatResult(downloads.Passed(), "download"))
 	report.Blank()
 
 	return report.Print()

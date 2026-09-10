@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package imagebench
+package util
 
 import "testing"
 

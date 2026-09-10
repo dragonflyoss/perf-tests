@@ -46,6 +46,9 @@ type Config struct {
 	// Nydus is the configuration for benchmarking nydus.
 	Nydus NydusConfig `yaml:"nydus,omitempty" mapstructure:"nydus,omitempty"`
 
+	// FileBench is the configuration for benchmarking concurrent file downloads.
+	FileBench FileBenchConfig `yaml:"file_bench,omitempty" mapstructure:"file_bench,omitempty"`
+
 	// ImageBench is the configuration for benchmarking concurrent image pulls.
 	ImageBench ImageBenchConfig `yaml:"image_bench,omitempty" mapstructure:"image_bench,omitempty"`
 }
@@ -61,7 +64,7 @@ type DragonflyConfig struct {
 	// Downloader is the downloader to use for the benchmark [dfget, proxy], default is dfget.
 	Downloader string `yaml:"downloader,omitempty" mapstructure:"downloader,omitempty"`
 
-	// FileSizeLevel is the file size level to use for the benchmark [nano, micro, small, medium, large, xlarge, xxlarge], default is "" to run all levels.
+	// FileSizeLevel is the file size level to use for the benchmark [1b, 1k, 1m, 10m, 1g, 10g, 30g], default is "" to run all levels.
 	FileSizeLevel string `yaml:"file_size_level,omitempty" mapstructure:"file_size_level,omitempty"`
 }
 
@@ -72,6 +75,18 @@ type NydusConfig struct {
 
 	// Number is the number of times to run the benchmark.
 	Number uint32 `yaml:"number,omitempty" mapstructure:"number,omitempty"`
+}
+
+// FileBenchConfig is the configuration for benchmarking concurrent file downloads.
+type FileBenchConfig struct {
+	// Namespace is the namespace to use for the benchmark.
+	Namespace string `yaml:"namespace,omitempty" mapstructure:"namespace,omitempty"`
+
+	// Peers is the number of peers to download on, 0 means all peers.
+	Peers uint32 `yaml:"peers,omitempty" mapstructure:"peers,omitempty"`
+
+	// File is the file server path to download.
+	File string `yaml:"file,omitempty" mapstructure:"file,omitempty"`
 }
 
 // ImageBenchConfig is the configuration for benchmarking concurrent image pulls.
@@ -108,11 +123,16 @@ func New() *Config {
 			Number:    1,
 			Namespace: "nydus-snapshotter",
 		},
+		FileBench: FileBenchConfig{
+			Namespace: "dragonfly-system",
+			Peers:     0,
+			File:      "1g",
+		},
 		ImageBench: ImageBenchConfig{
 			Namespace:        "dragonfly-system",
 			Peers:            0,
 			Image:            "dragonflyoss/image-bench:v1-1gb-4",
-			CleanupImage:     "dragonflyoss/image-bench-runner:latest",
+			CleanupImage:     "dragonflyoss/image-bench:latest",
 			ContainerdSocket: "/run/containerd/containerd.sock",
 		},
 	}
