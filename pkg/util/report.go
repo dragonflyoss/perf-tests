@@ -103,7 +103,7 @@ func (r *Report) Row(label string, text string) {
 func (r *Report) Cells(label string, texts []string) {
 	var line strings.Builder
 	for _, text := range texts {
-		fmt.Fprintf(&line, "%9s", text)
+		fmt.Fprintf(&line, " %9s", text)
 	}
 
 	r.Row(label, line.String())
