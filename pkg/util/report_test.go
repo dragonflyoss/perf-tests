@@ -165,7 +165,7 @@ func TestReport(t *testing.T) {
 	report.Cells("Latency (ms)", []string{"min", "max"})
 	report.Blank()
 
-	want := "\nfile-bench\n\n  Run             1g on 10 peers\n  Latency (ms)          min      max\n\n"
+	want := "\nfile-bench\n\n  Run             1g on 10 peers\n  Latency (ms)           min       max\n\n"
 	if got := report.String(); got != want {
 		t.Fatalf("String() = %q, want %q", got, want)
 	}
