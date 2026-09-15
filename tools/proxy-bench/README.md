@@ -45,7 +45,7 @@ response body is discarded as it arrives, and k6 prints latency, throughput and 
 Install [k6](https://grafana.com/docs/k6/latest/set-up/install-k6/), then:
 
 ```shell
-HTTP_PROXY=http://127.0.0.1:4001 k6 run -e MODE=sequential -e RATE=0 -e VUS=256 proxy-bench.js
+HTTP_PROXY=http://127.0.0.1:4001 k6 run -e MODE=sequential -e RATE=2000 -e MAX_VUS=1024 proxy-bench.js
 ```
 
 ## Modes
@@ -60,21 +60,22 @@ HTTP_PROXY=http://127.0.0.1:4001 k6 run -e MODE=sequential -e RATE=0 -e VUS=256 
 
 All knobs are environment variables, set them in the Job `env` or with `k6 run -e NAME=value`.
 
-| Name               | Default                       | Description                                       |
-|--------------------|-------------------------------|---------------------------------------------------|
-| `HTTP_PROXY`       | none                          | Proxy to send requests through.                   |
-| `MODE`             | `repeat`                      | `repeat`, `random` or `sequential`.               |
-| `TARGET_URL`       | `http://file-server/4m` \*    | Object to download.                               |
-| `RATE`             | `100`                         | Requests per second, `0` runs `VUS` back-to-back. |
-| `VUS`              | `64`                          | Max concurrent requests.                          |
-| `DURATION`         | `60s`                         | Test duration.                                    |
-| `TIMEOUT`          | `30s`                         | Per-request timeout.                              |
-| `RANGE`            | none                          | Range header for repeat/random, e.g. `0-1023`.    |
-| `FILE_SIZE`        | `1073741824` (1GiB)           | sequential: object size in bytes.                 |
-| `CHUNK_SIZE`       | `4194304` (4MiB)              | sequential: bytes per request.                    |
-| `STREAMS`          | `128`                         | sequential: readers interleaved round-robin.      |
-| `URL_COUNT`        | `32`                          | sequential: number of tasks in the pool.          |
-| `SEED_CLIENT_CPUS` | off                           | CPUs of the seed client, prints `cpu_cost`.       |
+| Name                | Default                    | Description                                              |
+|---------------------|----------------------------|----------------------------------------------------------|
+| `HTTP_PROXY`        | none                       | Proxy to send requests through.                          |
+| `MODE`              | `repeat`                   | `repeat`, `random` or `sequential`.                      |
+| `TARGET_URL`        | `http://file-server/4m` \* | Object to download.                                      |
+| `RATE`              | `1000`                     | Requests per second.                                     |
+| `PRE_ALLOCATED_VUS` | `64`                       | Concurrent requests k6 starts up front.                  |
+| `MAX_VUS`           | `512`                      | Max concurrent requests, k6 adds VUs on demand up to it. |
+| `DURATION`          | `60s`                      | Test duration.                                           |
+| `TIMEOUT`           | `30s`                      | Per-request timeout.                                     |
+| `RANGE`             | none                       | Range header for repeat/random, e.g. `0-1023`.           |
+| `FILE_SIZE`         | `1073741824` (1GiB)        | sequential: object size in bytes.                        |
+| `CHUNK_SIZE`        | `4194304` (4MiB)           | sequential: bytes per request.                           |
+| `STREAMS`           | `128`                      | sequential: readers interleaved round-robin.             |
+| `URL_COUNT`         | `32`                       | sequential: number of tasks in the pool.                 |
+| `SEED_CLIENT_CPUS`  | off                        | CPUs of the seed client, prints `cpu_cost`.              |
 
 \* `http://file-server/1g` in the sequential mode.
 
@@ -87,12 +88,12 @@ proxy-bench
 
   Run           sequential via http://seed-client:4001, 60.0s
   Target        http://file-server/1g
-  Load          256 VUs back-to-back, constant-vus
+  Load          2000 req/s target, constant-arrival-rate, 64 to 512 VUs, peak 261
   Sequential    1 GiB in 4 MiB chunks, 256 per pass, 128 streams over 32 URLs
 
-  Requests      120,481 total, 2008.0 req/s, 0 dropped
-  Failed        0 of 120,481 (0.00%)
-  Check         ✓ status is 206, 120,481 of 120,481
+  Requests      119,987 total, 1999.8 req/s, 0 dropped
+  Failed        0 of 119,987 (0.00%)
+  Check         ✓ status is 206, 119,987 of 119,987
 
   Latency (ms)        min      avg      med    p(90)    p(95)    p(99)      max
     request         12.11   127.40   118.62   201.55   233.10   310.27   812.94
@@ -100,24 +101,24 @@ proxy-bench
     first byte       0.31     9.85     6.20    18.71    27.02    61.44   402.80
     download        11.02   117.30   111.90   186.02   214.65   281.13   711.50
 
-  Throughput    470.6 GiB received, 67.36 Gbps
-  CPU cost      4 cores / 67.36 Gbps = 0.059 core/Gbps
+  Throughput    468.7 GiB received, 67.10 Gbps
+  CPU cost      4 cores / 67.10 Gbps = 0.060 core/Gbps
 
   Result        PASSED, ✓ http_req_failed rate<0.01
 ```
 
-| Row          | Meaning                                                                         |
-|--------------|---------------------------------------------------------------------------------|
-| `Requests`   | Requests sent, rate achieved, iterations dropped because `VUS` could not keep up. |
-| `Failed`     | Wrong status code or transport error.                                            |
-| `Check`      | Every response carried the expected status, 206 for ranged requests, else 200.  |
-| `request`    | Whole request, from first byte sent to last byte received.                       |
-| `connect`    | TCP connect, 0 once connections are reused.                                      |
-| `first byte` | Request sent to first byte of the response, i.e. proxy latency.                  |
-| `download`   | First to last byte of the response body.                                         |
-| `Throughput` | Bytes received through the proxy, headers included.                              |
-| `CPU cost`   | Seed client cores per Gbps served, only with `SEED_CLIENT_CPUS`.                 |
-| `Result`     | `FAILED` and exit code 99 when a threshold is crossed.                           |
+| Row          | Meaning                                                                             |
+|--------------|-------------------------------------------------------------------------------------|
+| `Requests`   | Requests sent, rate achieved, requests dropped because `MAX_VUS` could not keep up. |
+| `Failed`     | Wrong status code or transport error.                                               |
+| `Check`      | Every response carried the expected status, 206 for ranged requests, else 200.      |
+| `request`    | Whole request, from first byte sent to last byte received.                          |
+| `connect`    | TCP connect, 0 once connections are reused.                                         |
+| `first byte` | Request sent to first byte of the response, i.e. proxy latency.                     |
+| `download`   | First to last byte of the response body.                                            |
+| `Throughput` | Bytes received through the proxy, headers included.                                 |
+| `CPU cost`   | Seed client cores per Gbps served, only with `SEED_CLIENT_CPUS`.                    |
+| `Result`     | `FAILED` and exit code 99 when a threshold is crossed.                              |
 
 ## Build the image
 

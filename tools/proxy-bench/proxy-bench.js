@@ -13,10 +13,10 @@
 //                are interleaved round-robin so several tasks stay in flight
 //                at once.
 //
-// Load model: RATE>0 uses the constant-arrival-rate executor, RATE requests/s
-// are started regardless of latency on up to VUS VUs (k6 reports
-// dropped_iterations when the VUs cannot keep up). RATE=0 uses the constant-vus
-// executor, VUS VUs loop back-to-back as fast as the proxy answers.
+// Load model: the constant-arrival-rate executor starts RATE requests/s
+// regardless of latency. k6 pre-allocates PRE_ALLOCATED_VUS VUs and adds more
+// on demand up to MAX_VUS; once even MAX_VUS cannot keep up, requests are
+// skipped and reported as dropped_iterations.
 //
 // Pass/fail: every response must carry the status the mode expects, 206 for
 // ranged requests and 200 otherwise; anything else, or a transport error,
@@ -30,13 +30,14 @@
 //   HTTP_PROXY=http://127.0.0.1:4001 k6 run tools/proxy-bench/proxy-bench.js
 //   HTTP_PROXY=http://127.0.0.1:4001 k6 run -e MODE=random -e RATE=200 -e DURATION=120s tools/proxy-bench/proxy-bench.js
 //   HTTP_PROXY=http://127.0.0.1:4001 k6 run -e MODE=random -e RANGE=0-1023 tools/proxy-bench/proxy-bench.js
-//   HTTP_PROXY=http://127.0.0.1:4001 k6 run -e MODE=sequential -e RATE=0 -e VUS=256 -e SEED_CLIENT_CPUS=4 tools/proxy-bench/proxy-bench.js
+//   HTTP_PROXY=http://127.0.0.1:4001 k6 run -e MODE=sequential -e RATE=2000 -e MAX_VUS=1024 -e SEED_CLIENT_CPUS=4 tools/proxy-bench/proxy-bench.js
 //
 // Knobs (defaults in parentheses):
 //   MODE              repeat | random | sequential (repeat)
 //   TARGET_URL        object to download (http://file-server/4m, sequential: http://file-server/1g)
-//   RATE              requests per second, 0 switches to the constant-vus executor (100)
-//   VUS               max concurrent requests, i.e. k6 virtual users (64)
+//   RATE              requests per second (1000)
+//   PRE_ALLOCATED_VUS VUs, i.e. concurrent requests, started up front (64)
+//   MAX_VUS           max concurrent requests, k6 adds VUs on demand up to this many (512)
 //   DURATION          test duration (60s)
 //   TIMEOUT           per-request timeout (30s)
 //   RANGE             Range header sent with every repeat/random request, e.g. 0-1023 (none)
@@ -72,8 +73,9 @@ function envInt(name, def, min) {
 // see tools/file-server/Dockerfile); the other modes default to the 4MiB /4m.
 const TARGET_URL =
   __ENV.TARGET_URL || (MODE === 'sequential' ? 'http://file-server/1g' : 'http://file-server/4m');
-const RATE = envInt('RATE', 100, 0);
-const VUS = envInt('VUS', 64, 1);
+const RATE = envInt('RATE', 1000, 1);
+const PRE_ALLOCATED_VUS = envInt('PRE_ALLOCATED_VUS', 64, 1);
+const MAX_VUS = envInt('MAX_VUS', 512, 1); // k6 rejects MAX_VUS < PRE_ALLOCATED_VUS itself.
 const DURATION = __ENV.DURATION || '60s';
 const TIMEOUT = __ENV.TIMEOUT || '30s';
 let RANGE = __ENV.RANGE || '';
@@ -109,10 +111,14 @@ const CHECKS = { [`status is ${EXPECTED_STATUS}`]: (r) => r.status === EXPECTED_
 
 export const options = {
   scenarios: {
-    [MODE]:
-      RATE > 0
-        ? { executor: 'constant-arrival-rate', rate: RATE, timeUnit: '1s', duration: DURATION, preAllocatedVUs: VUS }
-        : { executor: 'constant-vus', vus: VUS, duration: DURATION },
+    [MODE]: {
+      executor: 'constant-arrival-rate',
+      rate: RATE,
+      timeUnit: '1s',
+      duration: DURATION,
+      preAllocatedVUs: PRE_ALLOCATED_VUS,
+      maxVUs: MAX_VUS,
+    },
   },
 
   // Fail the run instead of only printing a summary full of errors, k6 exits
@@ -259,10 +265,7 @@ export function handleSummary(data) {
   const dropped = value('dropped_iterations', 'count');
   const received = value('data_received', 'count');
   const receiveRate = value('data_received', 'rate');
-  const load =
-    RATE > 0
-      ? `${RATE} req/s target, constant-arrival-rate, up to ${VUS} VUs, peak ${value('vus', 'max')}`
-      : `${VUS} VUs back-to-back, constant-vus`;
+  const load = `${RATE} req/s target, constant-arrival-rate, ${PRE_ALLOCATED_VUS} to ${MAX_VUS} VUs, peak ${value('vus', 'max')}`;
   const sequential =
     `${fmt.bytes(FILE_SIZE)} in ${fmt.bytes(CHUNK_SIZE)} chunks, ${CHUNKS_PER_PASS} per pass, ` +
     `${STREAMS} streams over ${URL_COUNT} URLs`;

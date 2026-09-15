@@ -48,8 +48,15 @@ spec:
             # pool of URL_COUNT unique query strings.
             - name: MODE
               value: 'repeat'
+            # Requests per second. k6 starts PRE_ALLOCATED_VUS VUs up front and
+            # adds more on demand up to MAX_VUS; requests that find no free VU
+            # are counted as dropped in the summary.
             - name: RATE
-              value: '100'
+              value: '1000'
+            - name: PRE_ALLOCATED_VUS
+              value: '64'
+            - name: MAX_VUS
+              value: '512'
             - name: DURATION
               value: '60s'
             # Object to download. Defaults to http://file-server/4m (4MiB),
