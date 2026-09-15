@@ -20,9 +20,12 @@
 //
 // Pass/fail: every response must carry the status the mode expects, 206 for
 // ranged requests and 200 otherwise; anything else, or a transport error,
-// counts towards http_req_failed. The run fails (exit code 99, a Failed Job in
-// Kubernetes) when more than 1% of the requests failed. handleSummary() prints
-// the report either way, in place of k6's default summary.
+// counts towards http_req_failed. The status is verified by k6 itself through
+// the response callback, so the iteration runs no JavaScript on the response
+// (no check(), no extra metric per request). The run fails (exit code 99, a
+// Failed Job in Kubernetes) when more than 1% of the requests failed.
+// handleSummary() prints the report either way, in place of k6's default
+// summary.
 //
 // k6 picks the proxy up from the standard HTTP_PROXY/HTTPS_PROXY environment
 // variables (real environment variables, -e is not enough). Every other knob is
@@ -47,7 +50,6 @@
 //   URL_COUNT         sequential: size of the URL pool (32)
 //   SEED_CLIENT_CPUS  CPUs of the seed client behind HTTP_PROXY, adds cpu_cost in core/Gbps to the summary (off)
 import http from 'k6/http';
-import { check } from 'k6';
 import exec from 'k6/execution';
 
 const MODE = __ENV.MODE || 'repeat';
@@ -107,7 +109,6 @@ if (RANGE && !RANGE.startsWith('bytes=')) {
 // ignores the Range header and answers 200 with the whole object.
 const EXPECTED_STATUS = MODE === 'sequential' || RANGE ? 206 : 200;
 http.setResponseCallback(http.expectedStatuses(EXPECTED_STATUS));
-const CHECKS = { [`status is ${EXPECTED_STATUS}`]: (r) => r.status === EXPECTED_STATUS };
 
 export const options = {
   scenarios: {
@@ -118,6 +119,10 @@ export const options = {
       duration: DURATION,
       preAllocatedVUs: PRE_ALLOCATED_VUS,
       maxVUs: MAX_VUS,
+      // Requests still in flight when DURATION ends get their full TIMEOUT to
+      // finish or fail; k6 would otherwise interrupt them after 30s and drop
+      // them from every metric, so neither the counts nor Failed would see them.
+      gracefulStop: TIMEOUT,
     },
   },
 
@@ -183,7 +188,7 @@ export default function ({ runId }) {
     params.headers.Range = RANGE;
   }
 
-  check(http.get(url, params), CHECKS);
+  http.get(url, params);
 }
 
 // Formatting for the report.
@@ -254,7 +259,6 @@ export function handleSummary(data) {
   const cells = (texts) => texts.map((t) => t.padStart(9)).join('');
 
   const stats = data.options.summaryTrendStats;
-  const checks = data.root_group.checks || [];
   const verdicts = thresholds(data);
   const passed = verdicts.every((t) => t.ok);
 
@@ -283,9 +287,10 @@ export function handleSummary(data) {
       'Requests',
       `${fmt.int(requests)} total, ${value('http_reqs', 'rate').toFixed(1)} req/s, ${fmt.int(dropped)} dropped`,
     ),
-    row('Failed', `${fmt.int(failed)} of ${fmt.int(requests)} (${fmt.pct(failed, requests)})`),
-    ...checks.map((c) =>
-      row('Check', `${mark(c.fails === 0)} ${c.name}, ${fmt.int(c.passes)} of ${fmt.int(c.passes + c.fails)}`),
+    row(
+      'Failed',
+      `${fmt.int(failed)} of ${fmt.int(requests)} (${fmt.pct(failed, requests)}), ` +
+        `status other than ${EXPECTED_STATUS} or transport error`,
     ),
     '',
     row('Latency (ms)', cells(stats)),

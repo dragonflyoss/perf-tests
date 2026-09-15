@@ -92,8 +92,7 @@ proxy-bench
   Sequential    1 GiB in 4 MiB chunks, 256 per pass, 128 streams over 32 URLs
 
   Requests      119,987 total, 1999.8 req/s, 0 dropped
-  Failed        0 of 119,987 (0.00%)
-  Check         ✓ status is 206, 119,987 of 119,987
+  Failed        0 of 119,987 (0.00%), status other than 206 or transport error
 
   Latency (ms)        min      avg      med    p(90)    p(95)    p(99)      max
     request         12.11   127.40   118.62   201.55   233.10   310.27   812.94
@@ -107,18 +106,17 @@ proxy-bench
   Result        PASSED, ✓ http_req_failed rate<0.01
 ```
 
-| Row          | Meaning                                                                             |
-|--------------|-------------------------------------------------------------------------------------|
-| `Requests`   | Requests sent, rate achieved, requests dropped because `MAX_VUS` could not keep up. |
-| `Failed`     | Wrong status code or transport error.                                               |
-| `Check`      | Every response carried the expected status, 206 for ranged requests, else 200.      |
-| `request`    | Whole request, from first byte sent to last byte received.                          |
-| `connect`    | TCP connect, 0 once connections are reused.                                         |
-| `first byte` | Request sent to first byte of the response, i.e. proxy latency.                     |
-| `download`   | First to last byte of the response body.                                            |
-| `Throughput` | Bytes received through the proxy, headers included.                                 |
-| `CPU cost`   | Seed client cores per Gbps served, only with `SEED_CLIENT_CPUS`.                    |
-| `Result`     | `FAILED` and exit code 99 when a threshold is crossed.                              |
+| Row          | Meaning                                                                              |
+|--------------|--------------------------------------------------------------------------------------|
+| `Requests`   | Requests sent, rate achieved, requests dropped because `MAX_VUS` could not keep up.  |
+| `Failed`     | Wrong status code or transport error, 206 is expected for ranged requests, else 200. |
+| `request`    | Whole request, from first byte sent to last byte received.                           |
+| `connect`    | TCP connect, 0 once connections are reused.                                          |
+| `first byte` | Request sent to first byte of the response, i.e. proxy latency.                      |
+| `download`   | First to last byte of the response body.                                             |
+| `Throughput` | Bytes received through the proxy, headers included.                                  |
+| `CPU cost`   | Seed client cores per Gbps served, only with `SEED_CLIENT_CPUS`.                     |
+| `Result`     | `FAILED` and exit code 99 when a threshold is crossed.                               |
 
 ## Build the image
 
