@@ -53,6 +53,18 @@ docker-push-file-bench:
 	docker buildx build --platform linux/amd64,linux/arm64 --push -t $(D7Y_REGISTRY)/file-bench:latest -f ./tools/file-bench/Dockerfile .
 .PHONY: docker-push-file-bench
 
+# Build dfget-bench image.
+docker-build-dfget-bench:
+	@echo "Begin to use docker build dfget-bench image."
+	docker buildx build --platform linux/amd64,linux/arm64 -t $(D7Y_REGISTRY)/dfget-bench:latest -f ./tools/dfget-bench/Dockerfile .
+.PHONY: docker-build-dfget-bench
+
+# Push dfget-bench image.
+docker-push-dfget-bench:
+	@echo "Begin to push dfget-bench docker image."
+	docker buildx build --platform linux/amd64,linux/arm64 --push -t $(D7Y_REGISTRY)/dfget-bench:latest -f ./tools/dfget-bench/Dockerfile .
+.PHONY: docker-push-dfget-bench
+
 # Build image-bench image.
 docker-build-image-bench:
 	@echo "Begin to use docker build image-bench image."
@@ -160,6 +172,8 @@ help:
 	@echo "make docker-push-proxy-bench                push proxy-bench image"
 	@echo "make docker-build-file-bench                build file-bench image"
 	@echo "make docker-push-file-bench                 push file-bench image"
+	@echo "make docker-build-dfget-bench               build dfget-bench image"
+	@echo "make docker-push-dfget-bench                push dfget-bench image"
 	@echo "make docker-build-image-bench               build image-bench image"
 	@echo "make docker-push-image-bench                push image-bench image"
 	@echo "make docker-build-image-bench-images        build all image-bench images pulled by the image benchmark"

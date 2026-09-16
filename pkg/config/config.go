@@ -51,6 +51,9 @@ type Config struct {
 
 	// ImageBench is the configuration for benchmarking concurrent image pulls.
 	ImageBench ImageBenchConfig `yaml:"image_bench,omitempty" mapstructure:"image_bench,omitempty"`
+
+	// DfgetBench is the configuration for benchmarking concurrent dfget downloads on one peer.
+	DfgetBench DfgetBenchConfig `yaml:"dfget_bench,omitempty" mapstructure:"dfget_bench,omitempty"`
 }
 
 // DragonflyConfig is the configuration for benchmarking dragonfly.
@@ -155,6 +158,49 @@ type ImageBenchConfig struct {
 	ContainerdSocket string `yaml:"containerd_socket,omitempty" mapstructure:"containerd_socket,omitempty"`
 }
 
+// DfgetBenchConfig is the configuration for benchmarking concurrent dfget downloads on one peer.
+type DfgetBenchConfig struct {
+	// Namespace is the namespace to use for the benchmark.
+	Namespace string `yaml:"namespace,omitempty" mapstructure:"namespace,omitempty"`
+
+	// PeerLabel is the label selector of the peer pods, the first one sorted by name is used when Pod is empty.
+	PeerLabel string `yaml:"peer_label,omitempty" mapstructure:"peer_label,omitempty"`
+
+	// SeedPeerLabel is the label selector of the seed peer pods, cleaned up along with the peers.
+	SeedPeerLabel string `yaml:"seed_peer_label,omitempty" mapstructure:"seed_peer_label,omitempty"`
+
+	// PeerContainer is the dfdaemon container name of the peer pod.
+	PeerContainer string `yaml:"peer_container,omitempty" mapstructure:"peer_container,omitempty"`
+
+	// PeerConfigMap is the name of the dfdaemon ConfigMap of the peers, found by PeerLabel when empty.
+	PeerConfigMap string `yaml:"peer_configmap,omitempty" mapstructure:"peer_configmap,omitempty"`
+
+	// SeedPeerConfigMap is the name of the dfdaemon ConfigMap of the seed peers, found by SeedPeerLabel when empty.
+	SeedPeerConfigMap string `yaml:"seed_peer_configmap,omitempty" mapstructure:"seed_peer_configmap,omitempty"`
+
+	// Pod is the name of the peer pod to download on, found by PeerLabel when empty.
+	Pod string `yaml:"pod,omitempty" mapstructure:"pod,omitempty"`
+
+	// Concurrency is the number of dfget to start at once on the peer.
+	Concurrency uint32 `yaml:"concurrency,omitempty" mapstructure:"concurrency,omitempty"`
+
+	// Mode is repeat, every dfget downloads the same task, random, every dfget downloads its own task,
+	// or fixed, the i-th dfget downloads the task r=<i> on every run.
+	Mode string `yaml:"mode,omitempty" mapstructure:"mode,omitempty"`
+
+	// File is the file server path to download.
+	File string `yaml:"file,omitempty" mapstructure:"file,omitempty"`
+
+	// FileServer is the base URL of the file server, http://file-server.<namespace>.svc when empty.
+	FileServer string `yaml:"file_server,omitempty" mapstructure:"file_server,omitempty"`
+
+	// OutputDir is the directory in the peer pod to write the downloaded files to.
+	OutputDir string `yaml:"output_dir,omitempty" mapstructure:"output_dir,omitempty"`
+
+	// MetricsPort is the metrics port of the dfdaemon to collect the traffic from.
+	MetricsPort uint32 `yaml:"metrics_port,omitempty" mapstructure:"metrics_port,omitempty"`
+}
+
 // New bench configuration.
 func New() *Config {
 	return &Config{
@@ -193,6 +239,17 @@ func New() *Config {
 			MetricsPort:       4002,
 			CleanupImage:      "dragonflyoss/image-bench:latest",
 			ContainerdSocket:  "/run/containerd/containerd.sock",
+		},
+		DfgetBench: DfgetBenchConfig{
+			Namespace:     "dragonfly-system",
+			PeerLabel:     "component=client",
+			SeedPeerLabel: "component=seed-client",
+			PeerContainer: "client",
+			Concurrency:   10,
+			Mode:          "repeat",
+			File:          "1g",
+			OutputDir:     "/tmp",
+			MetricsPort:   4002,
 		},
 	}
 }

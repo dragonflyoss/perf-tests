@@ -1,0 +1,85 @@
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: dfget-bench
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 86400
+  parallelism: 1
+  completions: 1
+  template:
+    metadata:
+      labels:
+        app: dragonfly
+        component: dfget-bench
+    spec:
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: dfget-bench
+          image: dragonflyoss/dfget-bench:latest
+          imagePullPolicy: 'Always'
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ['ALL']
+          resources:
+            requests:
+              cpu: '1'
+              memory: 1Gi
+            limits:
+              cpu: '2'
+              memory: 2Gi
+          # The image entrypoint is "dfbench dfget-bench". The report is printed
+          # to stdout, read it with kubectl logs job/dfget-bench. The Job fails
+          # when more than 1% of the dfget failed.
+          args:
+            - '--namespace=dragonfly-system'
+            # Label selector of the peer pods, kubectl -l syntax. The first pod
+            # by name is used unless --pod names one.
+            - '--peer-label=component=client'
+            # - '--pod=client-xxxxx'
+            # Name of the dfdaemon container in the peer pod.
+            - '--peer-container=client'
+            # Number of dfget run at once in the pod, one kubectl exec each.
+            - '--concurrency=10'
+            # Mode: "repeat" downloads the same task with every dfget, "random"
+            # gives every dfget its own uuid, so all of them go back-to-source,
+            # "fixed" numbers the dfget instead, r=0 to r=<concurrency-1>, so a
+            # second run on another peer downloads the same tasks by P2P.
+            - '--mode=repeat'
+            # File to download, one of 1b, 1k, 1m, 4m, 10m, 1g, 2g, 4g, 10g, 20g, 30g.
+            - '--file=1g'
+            # Base URL of the file server, http://file-server.<namespace>.svc when not set.
+            # - '--file-server=http://file-server.dragonfly-system.svc'
+            # Directory in the peer pod to download to, /tmp when not set. Point it
+            # at the dfdaemon storage filesystem so dfget hard links the file
+            # instead of copying it, see the README.
+            # - '--output-dir=/var/lib/dragonfly/dfbench'
+            # Metrics port of the dfdaemon, the download traffic is read from it.
+            - '--metrics-port=4002'
+            - '--timeout=2h'
+          env:
+            # kubectl reads the cluster credentials from the standard KUBECONFIG
+            # variable, the file comes from the dfget-bench-kubeconfig secret.
+            - name: KUBECONFIG
+              value: /etc/kubeconfig/config
+          volumeMounts:
+            - name: kubeconfig
+              mountPath: /etc/kubeconfig
+              readOnly: true
+            # kubectl cache, HOME is /tmp in the image.
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        # kubectl create secret generic dfget-bench-kubeconfig --from-file=config=$HOME/.kube/config
+        - name: kubeconfig
+          secret:
+            secretName: dfget-bench-kubeconfig
+        - name: tmp
+          emptyDir: {}

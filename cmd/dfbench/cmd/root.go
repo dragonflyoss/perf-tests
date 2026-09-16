@@ -78,4 +78,5 @@ func init() {
 	rootCmd.AddCommand(nydusCmd)
 	rootCmd.AddCommand(fileBenchCmd)
 	rootCmd.AddCommand(imageBenchCmd)
+	rootCmd.AddCommand(dfgetBenchCmd)
 }

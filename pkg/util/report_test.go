@@ -150,6 +150,15 @@ func TestFormat(t *testing.T) {
 		t.Errorf("FormatPercent(1, 10) = %q, want 10.00%%", got)
 	}
 
+	// 1 GiB in 8s is 1.07 Gbps.
+	if got := FormatGbps(1<<30, 8*time.Second); got != "1.07 Gbps" {
+		t.Errorf("FormatGbps(1GiB, 8s) = %q, want 1.07 Gbps", got)
+	}
+
+	if got := FormatGbps(1<<30, 0); got != "0.00 Gbps" {
+		t.Errorf("FormatGbps(1GiB, 0) = %q, want 0.00 Gbps", got)
+	}
+
 	if got := FormatResult(true, "download"); got != "PASSED, ✓ download failed rate<0.01" {
 		t.Errorf("FormatResult(true) = %q", got)
 	}
