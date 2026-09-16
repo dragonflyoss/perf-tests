@@ -185,6 +185,15 @@ func FormatPercent[T int | uint64](part, total T) string {
 	return fmt.Sprintf("%.2f%%", float64(part)/float64(total)*100)
 }
 
+// FormatGbps formats the bytes transferred over the duration in gigabits per second, 0.00 Gbps if the duration is zero.
+func FormatGbps(bytes uint64, d time.Duration) string {
+	if d <= 0 {
+		return "0.00 Gbps"
+	}
+
+	return fmt.Sprintf("%.2f Gbps", float64(bytes)*8/1e9/d.Seconds())
+}
+
 // FormatResult formats the result row of the report, e.g. "PASSED, ✓ download failed rate<0.01".
 func FormatResult(passed bool, subject string) string {
 	if passed {

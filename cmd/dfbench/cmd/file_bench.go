@@ -83,19 +83,19 @@ func init() {
 	fileBenchCmd.AddCommand(fileBenchCleanupCmd)
 }
 
-// newFileServer returns the file server of the benchmark, deployed in its namespace by default.
-func newFileServer(cfg *config.FileBenchConfig) backend.FileServer {
-	if cfg.FileServer != "" {
-		return backend.NewFileServerURL(cfg.FileServer)
+// newFileServer returns the file server at the base URL, or the one deployed in the namespace when it is empty.
+func newFileServer(baseURL string, namespace string) backend.FileServer {
+	if baseURL != "" {
+		return backend.NewFileServerURL(baseURL)
 	}
 
-	return backend.NewFileServer(cfg.Namespace)
+	return backend.NewFileServer(namespace)
 }
 
 // runFileBench runs the file benchmark.
 func runFileBench(ctx context.Context, cfg *config.Config) error {
 	stats := filebench.NewStats()
-	fileServer := newFileServer(&cfg.FileBench)
+	fileServer := newFileServer(cfg.FileBench.FileServer, cfg.FileBench.Namespace)
 	fileBench := filebench.New(&cfg.FileBench, fileServer, stats)
 
 	fmt.Printf("Running file benchmark for %s by DFGET ...\n", cfg.FileBench.File)
@@ -137,7 +137,7 @@ var fileBenchCleanupCmd = &cobra.Command{
 // cleanupFileBench cleans up the cache of the peers and seed peers.
 func cleanupFileBench(ctx context.Context, cfg *config.Config) error {
 	stats := filebench.NewStats()
-	fileServer := newFileServer(&cfg.FileBench)
+	fileServer := newFileServer(cfg.FileBench.FileServer, cfg.FileBench.Namespace)
 	fileBench := filebench.New(&cfg.FileBench, fileServer, stats)
 
 	fmt.Printf("Cleaning up peers and seed peers in %s ...\n", cfg.FileBench.Namespace)
