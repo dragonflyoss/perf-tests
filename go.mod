@@ -3,7 +3,7 @@ module github.com/dragonflyoss/perf-tests
 go 1.25.0
 
 require (
-	github.com/dustin/go-humanize v1.0.1
+	github.com/dustin/go-humanize v1.1.0
 	github.com/google/uuid v1.6.0
 	github.com/olekukonko/tablewriter v1.1.2
 	github.com/prometheus/client_model v0.6.2
