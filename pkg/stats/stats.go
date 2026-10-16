@@ -296,13 +296,14 @@ func printTable(downloads map[backend.FileSizeLevel][]*Download) error {
 
 	for _, fileSizeLevel := range backend.FileSizeLevels {
 		if row, ok := rows[fileSizeLevel]; ok {
-			table.Append(row)
+			if err := table.Append(row); err != nil {
+				return err
+			}
 			continue
 		}
 	}
 
-	table.Render()
-	return nil
+	return table.Render()
 }
 
 // formatDuration formats the duration to a string.
