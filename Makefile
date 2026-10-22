@@ -159,6 +159,18 @@ markdownlint:
 	@./hack/markdownlint.sh
 .PHONY: markdownlint
 
+# Run unit tests
+test:
+	@echo "Begin to run unit tests."
+	@go test -mod=readonly -count=1 ./...
+.PHONY: test
+
+# Run unit tests with the race detector
+test-race:
+	@echo "Begin to run unit tests with race detector."
+	@go test -race -mod=readonly -count=1 ./...
+.PHONY: test-race
+
 # Clear compiled files
 clean:
 	@go clean
@@ -190,4 +202,6 @@ help:
 	@echo "make docker-push-image-bench-v1-20gb-4      push image-bench:v1-20gb-4"
 	@echo "make lint                                   run code lint"
 	@echo "make markdownlint                           run markdown lint"
+	@echo "make test                                   run unit tests"
+	@echo "make test-race                              run unit tests with race detector"
 	@echo "make clean                                  clean"
