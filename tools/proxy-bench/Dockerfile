@@ -1,4 +1,4 @@
-FROM grafana/k6:2.3.0
+FROM grafana/k6:2.4.0
 
 ENV K6_NO_USAGE_REPORT=true
 
