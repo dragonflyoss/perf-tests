@@ -19,12 +19,15 @@ package contract
 import (
 	"context"
 	"errors"
+	"fmt"
+	"path/filepath"
 )
 
 const (
-	InputInvalid    = "INPUT_INVALID"
-	DataConflict    = "DATA_CONFLICT"
-	ExecutionFailed = "EXECUTION_FAILED"
+	InputInvalid     = "INPUT_INVALID"
+	ContractMismatch = "CONTRACT_MISMATCH"
+	DataConflict     = "DATA_CONFLICT"
+	ExecutionFailed  = "EXECUTION_FAILED"
 )
 
 const (
@@ -65,9 +68,17 @@ func ExitCode(ctx context.Context, err error) int {
 		return exitSuccess
 	}
 	switch ErrorCode(err) {
-	case InputInvalid, DataConflict:
+	case InputInvalid, ContractMismatch, DataConflict:
 		return exitInputError
 	default:
 		return ExitFailure
 	}
+}
+
+// Input preserves error classification while identifying the consumed file.
+func Input(input, path string, err error) error {
+	if absolute, absErr := filepath.Abs(path); absErr == nil {
+		path = absolute
+	}
+	return fmt.Errorf("%s %q: %w", input, path, err)
 }

@@ -19,6 +19,7 @@ package contract
 const (
 	SchemaVersion         = 1
 	MaxSafeInteger uint64 = 1<<53 - 1
+	MaxRegions     uint64 = 1<<32 - 1
 )
 
 type Object struct {
@@ -31,4 +32,21 @@ type Manifest struct {
 	ObjectSize    uint64   `json:"object_size_bytes"`
 	ObjectCount   uint64   `json:"object_count"`
 	Objects       []Object `json:"objects"`
+}
+
+type Shard struct {
+	WorkerID    uint64 `json:"worker_id"`
+	RegionCount uint64 `json:"region_count"`
+	Path        string `json:"path"`
+	SHA256      string `json:"sha256"`
+}
+
+type Plan struct {
+	SchemaVersion    int     `json:"schema_version"`
+	ManifestSHA256   string  `json:"manifest_sha256"`
+	RangeBytes       uint64  `json:"range_bytes"`
+	RegionsPerObject uint64  `json:"regions_per_object"`
+	RegionCount      uint64  `json:"region_count"`
+	WorkerCount      uint64  `json:"worker_count"`
+	Shards           []Shard `json:"shards"`
 }

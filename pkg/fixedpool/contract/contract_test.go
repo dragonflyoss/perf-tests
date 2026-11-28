@@ -18,9 +18,11 @@ package contract
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -88,5 +90,48 @@ func TestPublicationDoesNotOverwrite(t *testing.T) {
 	}
 	if _, err := os.Stat(temporary); err != nil {
 		t.Fatalf("cancelled publication removed its working file: %v", err)
+	}
+}
+
+func TestStrictManifest(t *testing.T) {
+	sha := "66895a8785a1dee4951313348a79a5ee9def315d6728a9d303c8b6fe74a0fb13"
+	manifest := Manifest{SchemaVersion: 1, ObjectSize: 64, ObjectCount: 1, Objects: []Object{{ID: 0, SHA256: sha}}}
+	data, err := json.Marshal(manifest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	data = append(data, '\n')
+	valid := string(data)
+	cases := map[string]string{
+		"unknown root":     strings.Replace(valid, `{"schema_version":1`, `{"extra":0,"schema_version":1`, 1),
+		"unknown nested":   strings.Replace(valid, `"object_id":0`, `"extra":0,"object_id":0`, 1),
+		"duplicate":        strings.Replace(valid, `"schema_version":1`, `"schema_version":1,"schema_version":1`, 1),
+		"duplicate nested": strings.Replace(valid, `"object_id":0`, `"object_id":0,"object_id":0`, 1),
+		"missing zero ID":  strings.Replace(valid, `"object_id":0,`, "", 1),
+		"wrong case":       strings.Replace(valid, `"schema_version"`, `"SCHEMA_VERSION"`, 1),
+		"case alias root":  strings.Replace(valid, `"schema_version":1`, `"schema_version":1,"SCHEMA_VERSION":1`, 1),
+		"case alias inner": strings.Replace(valid, `"object_id":0`, `"object_id":0,"OBJECT_ID":0`, 1),
+		"null":             strings.Replace(valid, `"object_id":0`, `"object_id":null`, 1),
+		"schema":           strings.Replace(valid, `"schema_version":1`, `"schema_version":2`, 1),
+		"zero size":        strings.Replace(valid, `"object_size_bytes":64`, `"object_size_bytes":0`, 1),
+		"unsafe size":      strings.Replace(valid, `"object_size_bytes":64`, `"object_size_bytes":9007199254740992`, 1),
+		"empty dataset":    `{"schema_version":1,"object_size_bytes":64,"object_count":0,"objects":[]}`,
+		"wrong count":      strings.Replace(valid, `"object_count":1`, `"object_count":2`, 1),
+		"wrong ID":         strings.Replace(valid, `"object_id":0`, `"object_id":1`, 1),
+		"bad digest":       strings.Replace(valid, sha, "bad", 1),
+		"second value":     valid + "{}",
+	}
+	manifestPath := filepath.Join(t.TempDir(), "dataset-manifest.json")
+	for name, input := range cases {
+		t.Run(name, func(t *testing.T) {
+			if err := os.WriteFile(manifestPath, []byte(input), 0600); err != nil {
+				t.Fatal(err)
+			}
+			if _, _, err := ReadManifest(manifestPath); err == nil || ErrorCode(err) != ContractMismatch {
+				t.Fatalf("expected contract rejection: %v", err)
+			} else if !strings.Contains(err.Error(), manifestPath) || strings.Count(err.Error(), "MANIFEST ") != 1 {
+				t.Fatalf("expected one manifest path context: %v", err)
+			}
+		})
 	}
 }

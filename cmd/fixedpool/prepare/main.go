@@ -30,6 +30,7 @@ import (
 
 	"github.com/dragonflyoss/perf-tests/pkg/fixedpool/contract"
 	"github.com/dragonflyoss/perf-tests/pkg/fixedpool/dataset"
+	"github.com/dragonflyoss/perf-tests/pkg/fixedpool/plan"
 )
 
 func main() {
@@ -41,15 +42,17 @@ func main() {
 
 func run(ctx context.Context, args []string) int {
 	if len(args) == 0 || args[0] == "--help" || args[0] == "-h" || args[0] == "help" {
-		_, _ = fmt.Fprintln(os.Stderr, "Usage: fixed-pool-prepare data [options]; each action runs independently. Use <action> --help for options.")
+		_, _ = fmt.Fprintln(os.Stderr, "Usage: fixed-pool-prepare <data|plan> [options]; each action runs independently. Use <action> --help for options.")
 		return 0
 	}
 	var err error
 	switch args[0] {
 	case "data":
 		err = runData(ctx, args[1:])
+	case "plan":
+		err = runPlan(ctx, args[1:])
 	default:
-		err := contract.Tag(contract.InputInvalid, fmt.Errorf("unknown preparation action %q; use data", args[0]))
+		err := contract.Tag(contract.InputInvalid, fmt.Errorf("unknown preparation action %q; use data or plan", args[0]))
 		return finish(ctx, "prepare", err)
 	}
 	if errors.Is(err, flag.ErrHelp) {
@@ -98,6 +101,32 @@ func runData(ctx context.Context, args []string) error {
 		return err
 	}
 	_, _ = fmt.Fprintf(os.Stdout, "Data generated: B=%d N=%d manifest=%q sha256=%s elapsed_ms=%d\n", spec.Size, spec.Count, result.ManifestPath, result.ManifestSHA256, time.Since(started).Milliseconds())
+	return nil
+}
+
+func runPlan(ctx context.Context, args []string) error {
+	started := time.Now()
+	flags := flag.NewFlagSet("fixed-pool-prepare plan", flag.ContinueOnError)
+	var spec plan.Spec
+	flags.StringVar(&spec.ManifestPath, "manifest", "", "required: path to the input dataset manifest")
+	flags.StringVar(&spec.Directory, "out", "", "required: plan output directory; one writer, existing plan/shards are not replaced")
+	decimalFlag(flags, &spec.RangeBytes, "range", 0, "required: positive decimal Range size in bytes")
+	decimalFlag(flags, &spec.Workers, "workers", 1, "optional: number of load-generator shards (default 1)")
+	if err := parseArgs(flags, args); err != nil {
+		return err
+	}
+	_, _ = fmt.Fprintln(os.Stdout, "Preparing access plan from the manifest only.")
+	result, err := plan.Prepare(ctx, spec)
+	if err != nil {
+		return err
+	}
+	_, _ = fmt.Fprintf(os.Stdout,
+		"Plan generated: MANIFEST=%q sha256=%s B=%d N=%d R=%d W=%d regions_per_object=%d regions=%d planned_bytes=%s excluded_tail_bytes=%s PLAN=%q sha256=%s elapsed_ms=%d\n",
+		spec.ManifestPath, result.Plan.ManifestSHA256, result.ObjectSize, result.ObjectCount,
+		result.Plan.RangeBytes, result.Plan.WorkerCount, result.Plan.RegionsPerObject, result.Plan.RegionCount,
+		result.PlannedBytes, result.ExcludedTailBytes, result.Path, result.SHA256,
+		time.Since(started).Milliseconds(),
+	)
 	return nil
 }
 
