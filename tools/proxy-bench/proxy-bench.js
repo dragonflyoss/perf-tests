@@ -51,6 +51,7 @@
 //   SEED_CLIENT_CPUS  CPUs of the seed client behind HTTP_PROXY, adds cpu_cost in core/Gbps to the summary (off)
 import http from 'k6/http';
 import exec from 'k6/execution';
+import { textSummary, summaryTrendStats, formatBytes } from './lib/summary.js';
 
 const MODE = __ENV.MODE || 'repeat';
 if (!['repeat', 'random', 'sequential'].includes(MODE)) {
@@ -138,7 +139,7 @@ export const options = {
 
   // The percentiles handleSummary() prints, the same set for every run so
   // summaries stay comparable column by column.
-  summaryTrendStats: ['min', 'avg', 'med', 'p(90)', 'p(95)', 'p(99)', 'max'],
+  summaryTrendStats,
 };
 
 // setup() runs once, so every VU shares the same run id (the init context runs
@@ -191,120 +192,16 @@ export default function ({ runId }) {
   http.get(url, params);
 }
 
-// Formatting for the report.
-const fmt = {
-  int: (n) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ','),
-  ms: (n) => n.toFixed(2),
-  gbps: (bytesPerSecond) => ((bytesPerSecond * 8) / 1e9).toFixed(2),
-  pct: (part, total) => `${total > 0 ? ((100 * part) / total).toFixed(2) : '0.00'}%`,
-  seconds: (s) => (s < 120 ? `${s.toFixed(1)}s` : `${Math.floor(s / 60)}m${Math.round(s % 60)}s`),
-  bytes: (n) => {
-    const units = ['B', 'KiB', 'MiB', 'GiB', 'TiB'];
-    let i = 0;
-    for (; n >= 1024 && i < units.length - 1; i++) {
-      n /= 1024;
-    }
-
-    return `${Number.isInteger(n) ? n : n.toFixed(1)} ${units[i]}`;
-  },
-};
-
-// Latency rows of the report and the k6 metric behind each one.
-const LATENCY_ROWS = [
-  ['request', 'http_req_duration'],
-  ['connect', 'http_req_connecting'],
-  ['first byte', 'http_req_waiting'],
-  ['download', 'http_req_receiving'],
-];
-
-// One value of a metric, 0 when the metric has no samples: dropped_iterations,
-// for one, only exists once an iteration was dropped.
-function metric(data, name, key) {
-  const m = data.metrics[name];
-  return m && m.values[key] !== undefined ? m.values[key] : 0;
-}
-
-// Every threshold of the run with its verdict, e.g. "http_req_failed rate<0.01".
-function thresholds(data) {
-  return Object.entries(data.metrics).flatMap(([name, m]) =>
-    Object.entries(m.thresholds || {}).map(([expr, t]) => ({ name: `${name} ${expr}`, ok: t.ok })),
-  );
-}
-
-// Green/red on a terminal, plain text in kubectl logs and files.
-function painter(data) {
-  const enabled = data.state.isStdOutTTY && !data.options.noColor;
-  return (ok, text) => (enabled ? `\x1b[${ok ? 32 : 31}m${text}\x1b[0m` : text);
-}
-
-// CPU cost of the seed client: cores it burned per Gbps it delivered. Goodput is
-// the data_received rate, i.e. wire bytes including headers, within 0.01% of the
-// payload at MiB-sized requests.
-function cpuCost(bytesPerSecond) {
-  const gbps = (bytesPerSecond * 8) / 1e9;
-  return gbps > 0
-    ? `${SEED_CLIENT_CPUS} cores / ${gbps.toFixed(2)} Gbps = ${(SEED_CLIENT_CPUS / gbps).toFixed(3)} core/Gbps`
-    : 'n/a, nothing received';
-}
-
-// The end-of-test report, printed in place of k6's default summary: run
-// parameters, request counts, latency percentiles, throughput and, with
-// SEED_CLIENT_CPUS, the CPU cost. Thresholds still decide the exit code, this
-// only decides what is printed.
+// Both workloads use the same presentation of native k6 metrics.
 export function handleSummary(data) {
-  const value = (name, key) => metric(data, name, key);
-  const paint = painter(data);
-  const mark = (ok) => paint(ok, ok ? '✓' : '✗');
-  const row = (label, text) => `  ${label.padEnd(14)}${text}`;
-  const cells = (texts) => texts.map((t) => t.padStart(9)).join('');
-
-  const stats = data.options.summaryTrendStats;
-  const verdicts = thresholds(data);
-  const passed = verdicts.every((t) => t.ok);
-
-  const proxy = __ENV.HTTP_PROXY || __ENV.http_proxy || 'no proxy';
-  const elapsed = fmt.seconds(data.state.testRunDurationMs / 1000);
-  const requests = value('http_reqs', 'count');
-  const failed = value('http_req_failed', 'passes'); // The rate metric counts failures as passes.
-  const dropped = value('dropped_iterations', 'count');
-  const received = value('data_received', 'count');
-  const receiveRate = value('data_received', 'rate');
-  const load = `${RATE} req/s target, constant-arrival-rate, ${PRE_ALLOCATED_VUS} to ${MAX_VUS} VUs, peak ${value('vus', 'max')}`;
-  const sequential =
-    `${fmt.bytes(FILE_SIZE)} in ${fmt.bytes(CHUNK_SIZE)} chunks, ${CHUNKS_PER_PASS} per pass, ` +
-    `${STREAMS} streams over ${URL_COUNT} URLs`;
-
-  const lines = [
-    '',
-    'proxy-bench',
-    '',
-    row('Run', `${MODE} via ${proxy}, ${elapsed}`),
-    row('Target', RANGE ? `${TARGET_URL}, Range: ${RANGE}` : TARGET_URL),
-    row('Load', load),
-    ...(MODE === 'sequential' ? [row('Sequential', sequential)] : []),
-    '',
-    row(
-      'Requests',
-      `${fmt.int(requests)} total, ${value('http_reqs', 'rate').toFixed(1)} req/s, ${fmt.int(dropped)} dropped`,
-    ),
-    row(
-      'Failed',
-      `${fmt.int(failed)} of ${fmt.int(requests)} (${fmt.pct(failed, requests)}), ` +
-        `status other than ${EXPECTED_STATUS} or transport error`,
-    ),
-    '',
-    row('Latency (ms)', cells(stats)),
-    ...LATENCY_ROWS.map(([label, name]) => row(`  ${label}`, cells(stats.map((s) => fmt.ms(value(name, s)))))),
-    '',
-    row('Throughput', `${fmt.bytes(received)} received, ${fmt.gbps(receiveRate)} Gbps`),
-    ...(SEED_CLIENT_CPUS > 0 ? [row('CPU cost', cpuCost(receiveRate))] : []),
-    '',
-    row(
-      'Result',
-      `${paint(passed, passed ? 'PASSED' : 'FAILED')}, ${verdicts.map((t) => `${mark(t.ok)} ${t.name}`).join(', ')}`,
-    ),
-    '',
-  ];
-
-  return { stdout: lines.join('\n') + '\n' };
+  return { stdout: textSummary(data, {
+    mode: MODE,
+    proxy: __ENV.HTTP_PROXY || __ENV.http_proxy || 'no proxy',
+    target: RANGE ? `${TARGET_URL}, Range: ${RANGE}` : TARGET_URL,
+    rate: RATE, preAllocatedVUs: PRE_ALLOCATED_VUS, maxVUs: MAX_VUS,
+    expectedStatus: EXPECTED_STATUS, seedClientCPUs: SEED_CLIENT_CPUS,
+    details: MODE === 'sequential' ? [['Sequential',
+      `${formatBytes(FILE_SIZE)} in ${formatBytes(CHUNK_SIZE)} chunks, ${CHUNKS_PER_PASS} per pass, ` +
+      `${STREAMS} streams over ${URL_COUNT} URLs`]] : [],
+  }) };
 }

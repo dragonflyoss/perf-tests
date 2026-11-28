@@ -1,0 +1,60 @@
+# Start after the data Job succeeds. Only object bodies are published.
+# Recreate the Pod after replacing the mounted dataset directory; RATE/R/W changes do not require it.
+apiVersion: v1
+kind: Service
+metadata:
+  name: fixed-pool-http-service
+spec:
+  type: ClusterIP # Use NodePort if Seed cannot reach this Service; omit nodePort for automatic allocation.
+  selector:
+    app.kubernetes.io/name: fixed-pool-file-server
+  ports:
+  - name: http
+    port: 80
+    targetPort: 80
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: fixed-pool-file-server
+spec:
+  replicas: 1
+  serviceName: fixed-pool-http-service
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: fixed-pool-file-server
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: fixed-pool-file-server
+    spec:
+      # Optional placement must respect the source PVC topology.
+      # nodeSelector: {kubernetes.io/hostname: chosen-node}
+      # Keep selectors, ports and the object mount aligned; adapt storage/resources.
+      containers:
+      - name: file-server
+        image: docker.io/dragonflyoss/file-server@sha256:2ba1179ee4c2634284311cba657b3981482e2061109a8bc1e53597b70a1199d9
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: http
+          containerPort: 80
+        readinessProbe:
+          tcpSocket:
+            port: http
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: '2'
+            memory: 512Mi
+        volumeMounts:
+        - name: source
+          mountPath: /usr/share/nginx/html/objects
+          subPath: dataset/objects
+          readOnly: true
+      volumes:
+      - name: source
+        persistentVolumeClaim:
+          claimName: fixed-pool-source
+      automountServiceAccountToken: false

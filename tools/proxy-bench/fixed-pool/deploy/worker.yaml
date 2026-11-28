@@ -1,0 +1,69 @@
+# Supply a matching manifest/plan and explicit source/proxy. This Job does not prepare the cache.
+# RATE is the total rate across workers; WORKER_ID selects the shard. Review resources for real load.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: fixed-pool-worker
+spec:
+  backoffLimit: 0
+  template:
+    spec:
+      # For measured runs, choose the calibrated load node and respect PVC topology.
+      # nodeSelector: {kubernetes.io/hostname: chosen-node}
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - name: worker
+        image: dragonflyoss/proxy-bench:replace-with-build-tag
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: '2'
+            memory: 1Gi
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+        volumeMounts:
+        - name: inputs
+          mountPath: /inputs
+          readOnly: true
+        - name: tmp
+          mountPath: /tmp
+        imagePullPolicy: IfNotPresent
+        env:
+        # Mode and input paths: keep these aligned with the mounted inputs.
+        - name: MODE
+          value: fixed-pool
+        - name: MANIFEST
+          value: /inputs/dataset-manifest.json
+        - name: PLAN
+          value: /inputs/plan/request-plan.json
+        # Source and proxy: choose addresses reachable from their callers.
+        - name: SOURCE_BASE_URL
+          value: http://fixed-pool-http-service
+        - name: HTTP_PROXY
+          value: http://seed-client:4001
+        # RATE is total across W workers; each worker uses its distinct WORKER_ID.
+        - name: RATE
+          value: '10'
+        - name: DURATION
+          value: 30s
+        - name: WORKER_ID
+          value: '0'
+      volumes:
+      - name: inputs
+        persistentVolumeClaim:
+          claimName: fixed-pool-inputs
+          readOnly: true
+      - name: tmp
+        emptyDir: {}

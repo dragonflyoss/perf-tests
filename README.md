@@ -4,6 +4,9 @@ This repository includes performance test tools of dragonfly.
 
 ## Usage
 
+For HTTP proxy load tests with a fixed dataset and reusable access plans, see
+the [fixed-pool benchmark](tools/proxy-bench/fixed-pool/README.md).
+
 ### Installation
 
 ```shell
