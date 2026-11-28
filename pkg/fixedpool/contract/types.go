@@ -20,6 +20,7 @@ const (
 	SchemaVersion         = 1
 	MaxSafeInteger uint64 = 1<<53 - 1
 	MaxRegions     uint64 = 1<<32 - 1
+	MaxRate        uint64 = 1<<31 - 1
 )
 
 type Object struct {

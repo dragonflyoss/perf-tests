@@ -82,7 +82,7 @@ func checkValue(decoder *json.Decoder, location string) error {
 	if err != nil {
 		return err
 	}
-	if token == nil && strings.HasSuffix(location, ".object_id") {
+	if token == nil && (strings.HasSuffix(location, ".object_id") || strings.HasSuffix(location, ".worker_id")) {
 		return fmt.Errorf("%s: null is not allowed", location)
 	}
 	delimiter, ok := token.(json.Delim)
@@ -116,6 +116,9 @@ func checkValue(decoder *json.Decoder, location string) error {
 		field := ""
 		if strings.HasPrefix(location, "$.objects[") {
 			field = "object_id"
+		}
+		if strings.HasPrefix(location, "$.shards[") {
+			field = "worker_id"
 		}
 		if field != "" && !seen[field] {
 			return fmt.Errorf("%s.%s: required field missing", location, field)
