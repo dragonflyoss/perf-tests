@@ -84,21 +84,26 @@ All knobs are environment variables, set them in the Job `env` or with `k6 run -
 k6 prints a short report instead of its default summary:
 
 ```text
-proxy-bench
+proxy-bench (sequential)
 
   Run           sequential via http://seed-client:4001, 60.0s
   Target        http://file-server/1g
-  Load          2000 req/s target, constant-arrival-rate, 64 to 512 VUs, peak 261
+  Load          2000 req/s target, constant-arrival-rate, 64 to 512 VUs
   Sequential    1 GiB in 4 MiB chunks, 256 per pass, 128 streams over 32 URLs
 
-  Requests      119,987 total, 1999.8 req/s, 0 dropped
+  Requests      119,987 total, 1999.800 req/s, 0 dropped
+  Iterations    119,987 complete
+  VUs observed  n/a active peak, 261 allocated peak
   Failed        0 of 119,987 (0.00%), status other than 206 or transport error
 
   Latency (ms)        min      avg      med    p(90)    p(95)    p(99)      max
     request         12.11   127.40   118.62   201.55   233.10   310.27   812.94
+    blocked           n/a      n/a      n/a      n/a      n/a      n/a      n/a
     connect          0.00     0.01     0.00     0.00     0.00     0.21     4.10
+    sending           n/a      n/a      n/a      n/a      n/a      n/a      n/a
     first byte       0.31     9.85     6.20    18.71    27.02    61.44   402.80
     download        11.02   117.30   111.90   186.02   214.65   281.13   711.50
+    iteration         n/a      n/a      n/a      n/a      n/a      n/a      n/a
 
   Throughput    468.7 GiB received, 67.10 Gbps
   CPU cost      4 cores / 67.10 Gbps = 0.060 core/Gbps
@@ -109,14 +114,25 @@ proxy-bench
 | Row          | Meaning                                                                              |
 |--------------|--------------------------------------------------------------------------------------|
 | `Requests`   | Requests sent, rate achieved, requests dropped because `MAX_VUS` could not keep up.  |
+| `Iterations` | Completed k6 iterations.                                                            |
+| `VUs observed` | Sampled active (`vus.max`) and allocated (`vus_max.max`) VU peaks.                 |
 | `Failed`     | Wrong status code or transport error, 206 is expected for ranged requests, else 200. |
 | `request`    | Whole request, from first byte sent to last byte received.                           |
+| `blocked`    | Time waiting before the request can start, including waiting for a connection slot. |
 | `connect`    | TCP connect, 0 once connections are reused.                                          |
+| `sending`    | Time sending the request.                                                          |
 | `first byte` | Request sent to first byte of the response, i.e. proxy latency.                      |
 | `download`   | First to last byte of the response body.                                             |
+| `iteration`  | Whole k6 iteration duration.                                                        |
 | `Throughput` | Bytes received through the proxy, headers included.                                  |
 | `CPU cost`   | Seed client cores per Gbps served, only with `SEED_CLIENT_CPUS`.                     |
 | `Result`     | `FAILED` and exit code 99 when a threshold is crossed.                               |
+
+The report reads native k6 metrics through `lib/summary.js`. Missing samples show
+`n/a`; an omitted `dropped_iterations` metric shows zero. A run without thresholds
+shows `NOT EVALUATED`, rather than a passing verdict. Rendering does not change
+the workload, native metrics or threshold evaluation. VU sampling peaks do not
+represent exact instantaneous concurrency maxima.
 
 ## Build the image
 
