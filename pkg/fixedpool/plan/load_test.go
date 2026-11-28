@@ -74,14 +74,15 @@ func overwrite(t *testing.T, name string, data []byte) {
 }
 
 func TestCorruptPlanRejected(t *testing.T) {
-	for _, kind := range []string{"missing plan", "missing shard", "manifest mismatch", "worker outside plan", "null worker_id", "missing zero worker_id", "unknown", "duplicate", "out of bounds", "wrong count", "extra region"} {
+	const missingShard = "missing shard"
+	for _, kind := range []string{"missing plan", missingShard, "manifest mismatch", "worker outside plan", "null worker_id", "missing zero worker_id", "unknown", "duplicate", "out of bounds", "wrong count", "extra region"} {
 		t.Run(kind, func(t *testing.T) {
 			m, data, name := consumerFixture(t)
 			body := readFile(t, name)
 			switch kind {
-			case "missing plan", "missing shard":
+			case "missing plan", missingShard:
 				path := name
-				if kind == "missing shard" {
+				if kind == missingShard {
 					path = filepath.Join(filepath.Dir(name), "shards/0.json")
 				}
 				if err := os.Remove(path); err != nil {
@@ -121,7 +122,7 @@ func TestCorruptPlanRejected(t *testing.T) {
 				t.Fatal("corrupt plan accepted")
 			}
 			code := contract.ContractMismatch
-			if kind == "missing plan" || kind == "missing shard" {
+			if kind == "missing plan" || kind == missingShard {
 				code = contract.InputInvalid
 				if !errors.Is(err, os.ErrNotExist) {
 					t.Fatalf("file error lost its cause: %v", err)

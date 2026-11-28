@@ -57,7 +57,7 @@ type Result struct {
 // calculateRegions uses size and count from a validated manifest.
 func calculateRegions(size, count, rangeBytes, workers uint64) (perObject, total uint64, err error) {
 	if rangeBytes == 0 || rangeBytes > size {
-		return 0, 0, fmt.Errorf("R: expected 1..B=%d, actual %d", size, rangeBytes)
+		return 0, 0, fmt.Errorf("range: expected 1..B=%d, actual %d", size, rangeBytes)
 	}
 	perObject = size / rangeBytes
 	if perObject > contract.MaxRegions || count > contract.MaxRegions/perObject {

@@ -34,6 +34,14 @@ import (
 	"github.com/dragonflyoss/perf-tests/pkg/fixedpool/contract"
 )
 
+const (
+	caseCancelled             = "cancelled"
+	caseConcurrent            = "concurrent"
+	caseConcurrencyAboveCount = "concurrency-above-count"
+	caseTimeout               = "timeout"
+	caseDuplicateTask         = "duplicate-task"
+)
+
 func response(status int, body []byte) *http.Response {
 	resp := &http.Response{StatusCode: status, Header: make(http.Header), Body: io.NopCloser(bytes.NewReader(body)), ContentLength: int64(len(body))}
 	resp.Header.Set(taskHeader, "object-task")
@@ -44,7 +52,7 @@ func response(status int, body []byte) *http.Response {
 func TestFullResponseIntegrity(t *testing.T) {
 	// Independent SHA-256 vector for the three bytes "abc".
 	object := contract.Object{ID: 0, SHA256: "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"}
-	for _, name := range []string{"valid", "different-server", "status", "missing-server", "invalid-server", "ambiguous-server", "ambiguous-task", "encoding", "digest", "length", "cancelled"} {
+	for _, name := range []string{"valid", "different-server", "status", "missing-server", "invalid-server", "ambiguous-server", "ambiguous-task", "encoding", "digest", "length", caseCancelled} {
 		t.Run(name, func(t *testing.T) {
 			resp := response(http.StatusOK, []byte("abc"))
 			ctx, cancel := context.WithCancel(context.Background())
@@ -68,7 +76,7 @@ func TestFullResponseIntegrity(t *testing.T) {
 				resp.Body = io.NopCloser(strings.NewReader("xyz"))
 			case "length":
 				resp.Body = io.NopCloser(strings.NewReader("abcd"))
-			case "cancelled":
+			case caseCancelled:
 				cancel()
 			}
 			task, err := readFullResponse(ctx, resp, object, 3)
@@ -84,17 +92,17 @@ func TestFullResponseIntegrity(t *testing.T) {
 }
 
 func TestPreparationRequiresEveryObjectAndActiveContext(t *testing.T) {
-	for _, mode := range []string{"success", "concurrent", "concurrency-above-count", "zero-concurrency", "bad-second-object", "duplicate-task", "cancelled", "timeout"} {
+	for _, mode := range []string{"success", caseConcurrent, caseConcurrencyAboveCount, "zero-concurrency", "bad-second-object", caseDuplicateTask, caseCancelled, caseTimeout} {
 		t.Run(mode, func(t *testing.T) {
 			bodies := [][]byte{[]byte("one!"), []byte("two!"), []byte("tri!")}
 			concurrency := uint64(1)
 			if mode == "zero-concurrency" {
 				concurrency = 0
 			}
-			if mode == "concurrent" {
+			if mode == caseConcurrent {
 				concurrency = 2
 			}
-			if mode == "concurrency-above-count" {
+			if mode == caseConcurrencyAboveCount {
 				concurrency = 5
 			}
 			limit := uint32(min(concurrency, uint64(len(bodies))))
@@ -108,11 +116,11 @@ func TestPreparationRequiresEveryObjectAndActiveContext(t *testing.T) {
 					w.WriteHeader(http.StatusBadRequest)
 					return
 				}
-				if mode == "timeout" {
+				if mode == caseTimeout {
 					<-req.Context().Done()
 					return
 				}
-				if mode == "concurrent" || mode == "concurrency-above-count" {
+				if mode == caseConcurrent || mode == caseConcurrencyAboveCount {
 					if inFlight := active.Add(1); inFlight > int32(limit) {
 						t.Errorf("in-flight requests=%d exceed limit=%d", inFlight, limit)
 					}
@@ -136,7 +144,7 @@ func TestPreparationRequiresEveryObjectAndActiveContext(t *testing.T) {
 					}
 				}
 				w.Header().Set(taskHeader, fmt.Sprintf("task-%d", i))
-				if mode == "duplicate-task" {
+				if mode == caseDuplicateTask {
 					w.Header().Set(taskHeader, "shared-task")
 				}
 				w.Header().Set(serverHeader, fmt.Sprintf("192.0.2.%d", 10+i))
@@ -161,16 +169,16 @@ func TestPreparationRequiresEveryObjectAndActiveContext(t *testing.T) {
 				Manifest: manifest, SourceBaseURL: "http://objects.test", Proxy: proxy.URL,
 				Concurrency: concurrency, RequestTimeoutMS: 2000,
 			}
-			if mode == "timeout" {
+			if mode == caseTimeout {
 				spec.RequestTimeoutMS = 20
 			}
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
-			if mode == "cancelled" {
+			if mode == caseCancelled {
 				cancel()
 			}
 			result, err := Prepare(ctx, spec)
-			if mode == "success" || mode == "concurrent" || mode == "concurrency-above-count" {
+			if mode == "success" || mode == caseConcurrent || mode == caseConcurrencyAboveCount {
 				if err != nil || result.ObjectCount != m.ObjectCount || result.ManifestSHA256 != contract.Digest(raw) || result.SourceBaseURL != spec.SourceBaseURL || requests.Load() != uint32(len(bodies)) {
 					t.Fatalf("incomplete preparation: %+v requests=%d err=%v", result, requests.Load(), err)
 				}
@@ -180,16 +188,16 @@ func TestPreparationRequiresEveryObjectAndActiveContext(t *testing.T) {
 			if mode == "zero-concurrency" && (contract.ErrorCode(err) != contract.InputInvalid || !strings.Contains(err.Error(), "prepare.concurrency") || requests.Load() != 0) {
 				t.Fatalf("zero concurrency was not rejected before requests: requests=%d err=%v", requests.Load(), err)
 			}
-			if mode == "duplicate-task" && (contract.ErrorCode(err) != contract.ExecutionFailed || !strings.Contains(err.Error(), "share task")) {
+			if mode == caseDuplicateTask && (contract.ErrorCode(err) != contract.ExecutionFailed || !strings.Contains(err.Error(), "share task")) {
 				t.Fatalf("shared task was not rejected: %v", err)
 			}
-			if (mode == "bad-second-object" || mode == "duplicate-task") && requests.Load() != 2 {
+			if (mode == "bad-second-object" || mode == caseDuplicateTask) && requests.Load() != 2 {
 				t.Fatalf("preparation dispatched after failure: requests=%d err=%v", requests.Load(), err)
 			}
-			if mode == "cancelled" && (!errors.Is(err, context.Canceled) || requests.Load() != 0) {
+			if mode == caseCancelled && (!errors.Is(err, context.Canceled) || requests.Load() != 0) {
 				t.Fatalf("cancelled preparation sent requests: requests=%d err=%v", requests.Load(), err)
 			}
-			if mode == "timeout" && !errors.Is(err, context.DeadlineExceeded) {
+			if mode == caseTimeout && !errors.Is(err, context.DeadlineExceeded) {
 				t.Fatalf("request timeout lost: %v", err)
 			}
 		})
