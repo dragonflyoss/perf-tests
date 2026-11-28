@@ -1,0 +1,56 @@
+# Optional preparation: full-read the manifest objects through the chosen proxy.
+# These role names must resolve from the actual callers; use a reachable FQDN/IP/NodePort otherwise.
+# Independent of plan.yaml; prints results to logs without output files or cache clearing.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: fixed-pool-seed
+spec:
+  backoffLimit: 0
+  template:
+    spec:
+      # Optional placement must respect the metadata PVC topology.
+      # nodeSelector: {kubernetes.io/hostname: chosen-node}
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - name: prepare
+        image: dragonflyoss/fixed-pool-prepare:replace-with-build-tag
+        imagePullPolicy: IfNotPresent
+        command:
+        - /usr/local/bin/fixed-pool-prepare
+        args:
+        - seed-cache
+        - --manifest
+        - /inputs/dataset-manifest.json
+        - --source-base-url
+        - http://fixed-pool-http-service
+        - --proxy
+        - http://seed-client:4001
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: '2'
+            memory: 1Gi
+        volumeMounts:
+        - name: inputs
+          mountPath: /inputs
+          readOnly: true
+      volumes:
+      - name: inputs
+        persistentVolumeClaim:
+          claimName: fixed-pool-inputs
+          readOnly: true

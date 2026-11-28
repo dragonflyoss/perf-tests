@@ -147,6 +147,22 @@ docker-push-image-bench-v1-20gb-4:
 	docker buildx build --platform linux/amd64,linux/arm64 --push -t $(D7Y_REGISTRY)/image-bench:v1-20gb-4 -f ./build/images/image-bench/v1-20gb-4/Dockerfile .
 .PHONY: docker-push-image-bench-v1-20gb-4
 
+# Build fixed-pool preparation image.
+docker-build-fixed-pool-prepare:
+	@echo "Begin to use docker build fixed-pool-prepare image."
+	docker buildx build --platform linux/amd64,linux/arm64 \
+		-t $(D7Y_REGISTRY)/fixed-pool-prepare:latest \
+		-f ./tools/proxy-bench/fixed-pool/Dockerfile.tools .
+.PHONY: docker-build-fixed-pool-prepare
+
+# Push fixed-pool preparation image.
+docker-push-fixed-pool-prepare:
+	@echo "Begin to push fixed-pool-prepare docker image."
+	docker buildx build --platform linux/amd64,linux/arm64 --push \
+		-t $(D7Y_REGISTRY)/fixed-pool-prepare:latest \
+		-f ./tools/proxy-bench/fixed-pool/Dockerfile.tools .
+.PHONY: docker-push-fixed-pool-prepare
+
 # Run code lint
 lint: markdownlint
 	@echo "Begin to golangci-lint."
@@ -178,6 +194,8 @@ clean:
 .PHONY: clean
 
 help: 
+	@echo "make docker-build-fixed-pool-prepare        build fixed-pool preparation image"
+	@echo "make docker-push-fixed-pool-prepare         push fixed-pool preparation image"
 	@echo "make docker-build-file-server               build file-server image"
 	@echo "make docker-push-file-server                push file-server image"
 	@echo "make docker-build-proxy-bench               build proxy-bench image"

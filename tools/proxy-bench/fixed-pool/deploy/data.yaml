@@ -1,0 +1,53 @@
+# Edit image, optional placement and dataset size/count; no source URL is needed here.
+# Use one preparer per location; the output must be absent or contain only the empty directory skeleton.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: fixed-pool-data
+spec:
+  backoffLimit: 0
+  template:
+    spec:
+      # Optional placement must respect the source PVC topology.
+      # nodeSelector: {kubernetes.io/hostname: chosen-node}
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - name: data
+        image: dragonflyoss/fixed-pool-prepare:replace-with-build-tag
+        imagePullPolicy: IfNotPresent
+        command:
+        - /usr/local/bin/fixed-pool-prepare
+        args:
+        - data
+        - --root
+        - /data/dataset
+        - --size
+        - '4194304' # B: bytes per object.
+        - --count
+        - '2' # N: number of objects.
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: '2'
+            memory: 1Gi
+        volumeMounts:
+        - name: source
+          mountPath: /data
+      volumes:
+      - name: source
+        persistentVolumeClaim:
+          claimName: fixed-pool-source

@@ -3,6 +3,9 @@
 Load-test the Dragonfly dfdaemon proxy with [k6](https://k6.io). Every request goes through the proxy, the
 response body is discarded as it arrives, and k6 prints latency, throughput and error rate at the end.
 
+For a fixed dataset and reusable access plan, see the
+[fixed-pool benchmark](fixed-pool/README.md).
+
 ## Prerequisites
 
 - Dragonfly installed in the cluster, see the [root README](../../README.md).
@@ -141,3 +144,7 @@ make docker-build-proxy-bench
 ```
 
 Tag and push it, then update `image` in `proxy-bench.yaml`.
+
+The same image also supports `MODE=fixed-pool`; see the
+[fixed-pool guide](fixed-pool/README.md). With no `MODE`, the image still runs
+the existing `repeat` mode.
