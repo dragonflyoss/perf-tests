@@ -135,3 +135,30 @@ func TestStrictManifest(t *testing.T) {
 		})
 	}
 }
+
+func TestURLRules(t *testing.T) {
+	for _, test := range []struct {
+		proxy string
+		valid bool
+	}{
+		{"http://seed.test:4001", true},
+		{"abc", false},
+		{"http://:4001", false},
+	} {
+		_, err := ParseProxyURL(test.proxy)
+		if (err == nil) != test.valid {
+			t.Fatalf("%+v: %v", test, err)
+		}
+	}
+	for _, input := range []string{"", "https://source.example", "http://user:pass@source.example", "http://source.example?a=b", "http://source.example?", "http://source.example#", "http://source.example:0", "http://source.example:65536"} {
+		if _, err := NormalizeBaseURL(input); err == nil {
+			t.Fatalf("accepted %q", input)
+		}
+	}
+	for input, want := range map[string]string{"http://LOCALHOST.": "http://localhost.", "http://x.localhost": "http://x.localhost", "http://127.0.0.1": "http://127.0.0.1", "http://[::1]": "http://[::1]", "http://[::ffff:127.0.0.1]": "http://[::ffff:127.0.0.1]", "http://SOURCE.example:80/base/": "http://source.example/base", "http://source.example": "http://source.example", "http://[2001:db8::1]:8080/": "http://[2001:db8::1]:8080", "http://source.example/base%2Fname//v/": "http://source.example/base%2Fname//v"} {
+		got, err := NormalizeBaseURL(input)
+		if err != nil || got != want {
+			t.Fatalf("%q: %q %v; want %s", input, got, err, want)
+		}
+	}
+}

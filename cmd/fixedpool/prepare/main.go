@@ -31,6 +31,7 @@ import (
 	"github.com/dragonflyoss/perf-tests/pkg/fixedpool/contract"
 	"github.com/dragonflyoss/perf-tests/pkg/fixedpool/dataset"
 	"github.com/dragonflyoss/perf-tests/pkg/fixedpool/plan"
+	"github.com/dragonflyoss/perf-tests/pkg/fixedpool/target"
 )
 
 func main() {
@@ -42,7 +43,7 @@ func main() {
 
 func run(ctx context.Context, args []string) int {
 	if len(args) == 0 || args[0] == "--help" || args[0] == "-h" || args[0] == "help" {
-		_, _ = fmt.Fprintln(os.Stderr, "Usage: fixed-pool-prepare <data|plan> [options]; each action runs independently. Use <action> --help for options.")
+		_, _ = fmt.Fprintln(os.Stderr, "Usage: fixed-pool-prepare <data|plan|seed-cache> [options]; each action runs independently. Use <action> --help for options.")
 		return 0
 	}
 	var err error
@@ -51,8 +52,10 @@ func run(ctx context.Context, args []string) int {
 		err = runData(ctx, args[1:])
 	case "plan":
 		err = runPlan(ctx, args[1:])
+	case "seed-cache":
+		err = runSeed(ctx, args[1:])
 	default:
-		err := contract.Tag(contract.InputInvalid, fmt.Errorf("unknown preparation action %q; use data or plan", args[0]))
+		err := contract.Tag(contract.InputInvalid, fmt.Errorf("unknown preparation action %q; use data, plan or seed-cache", args[0]))
 		return finish(ctx, "prepare", err)
 	}
 	if errors.Is(err, flag.ErrHelp) {
@@ -140,4 +143,28 @@ func decimalFlag(flags *flag.FlagSet, value *uint64, name string, initial uint64
 		*value = n
 		return nil
 	})
+}
+
+func runSeed(ctx context.Context, args []string) error {
+	started := time.Now()
+	flags := flag.NewFlagSet("fixed-pool-prepare seed-cache", flag.ContinueOnError)
+	var spec target.Spec
+	flags.StringVar(&spec.Manifest, "manifest", "", "required: immutable dataset manifest")
+	flags.StringVar(&spec.SourceBaseURL, "source-base-url", "", "required: HTTP source base URL")
+	flags.StringVar(&spec.Proxy, "proxy", "", "required: HTTP proxy origin")
+	decimalFlag(flags, &spec.Concurrency, "concurrency", 1, "optional: concurrent object preparations (default 1)")
+	decimalFlag(flags, &spec.RequestTimeoutMS, "request-timeout-ms", 1800000, "optional: full GET timeout in milliseconds (default 1800000)")
+	if err := parseArgs(flags, args); err != nil {
+		return err
+	}
+	result, err := target.Prepare(ctx, spec)
+	if err != nil {
+		return err
+	}
+	_, _ = fmt.Fprintf(os.Stdout,
+		"Seed prepared: MANIFEST=%q sha256=%s objects=%d source=%q target=%s elapsed_ms=%d\n",
+		spec.Manifest, result.ManifestSHA256, result.ObjectCount, result.SourceBaseURL,
+		spec.Proxy, time.Since(started).Milliseconds(),
+	)
+	return nil
 }
